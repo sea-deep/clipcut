@@ -76,26 +76,39 @@ Videos/
 
 ## Build from Source
 
-**Requirements:**
+### 1. System Dependencies
 
-- Rust (stable) — https://rustup.rs
-- Node.js 18+ — https://nodejs.org
-- Linux: `libwebkit2gtk-4.1-dev`, `libgtk-3-dev`, `libappindicator3-dev`
+**Arch Linux / Manjaro:**
+```bash
+sudo pacman -S --needed base-devel webkit2gtk-4.1 gtk3 nodejs npm rust ffmpeg
+```
+
+**Ubuntu / Debian:**
+```bash
+sudo apt update && sudo apt install -y build-essential libwebkit2gtk-4.1-dev libgtk-3-dev nodejs npm rustc cargo ffmpeg
+```
+
+**Windows:**
+- Install [Node.js 18+](https://nodejs.org)
+- Install [Rust](https://rustup.rs)
+- Install [Visual Studio C++ Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)
+
+### 2. Clone and Setup
 
 ```bash
-git clone https://github.com/sea-deep/clipcut
+git clone https://github.com/sea-deep/clipcut.git
 cd clipcut
 
-# Download bundled yt-dlp + ffmpeg + ffprobe
-bash scripts/download-sidecars.sh
-
-# Install frontend dependencies
+# Install frontend packages
 npm install
 
-# Run in development
+# Fetch bundled sidecars (yt-dlp + ffmpeg + ffprobe)
+bash scripts/download-sidecars.sh
+
+# Run development app
 npm run tauri dev
 
-# Build release
+# Or build standalone release package (AppImage on Linux, .exe on Windows)
 npm run tauri build
 ```
 

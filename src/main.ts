@@ -117,10 +117,11 @@ function setupEventListeners() {
     if (e.key === "Enter") handleLoad();
   });
   urlInput.addEventListener("paste", (e) => {
+    e.preventDefault();
     const pasted = e.clipboardData?.getData("text")?.trim() || "";
-    if (pasted.includes("youtu")) {
+    if (pasted) {
       urlInput.value = pasted;
-      setTimeout(handleLoad, 30);
+      handleLoad();
     }
   });
   urlInput.addEventListener("input", () => {
@@ -129,6 +130,10 @@ function setupEventListeners() {
       handleLoad();
     }
   });
+
+  // Dynamically enable/update Export button as user types in Start and End fields
+  addStartInput.addEventListener("input", updateExportButton);
+  addEndInput.addEventListener("input", updateExportButton);
 
   // URL drag-and-drop
   const urlSection = $("url-section");
@@ -237,6 +242,11 @@ async function handleLoad() {
     return;
   }
 
+  // Skip reloading if already showing this video
+  if (appState.phase === "video_loaded" && appState.video.url === url) {
+    return;
+  }
+
   clearUrlError();
   setLoadingState(true);
 
@@ -244,8 +254,13 @@ async function handleLoad() {
     const video = await invoke<VideoInfo>("load_video", { url });
     onVideoLoaded(video);
   } catch (e: unknown) {
-    const err = e as { message?: string };
-    showUrlError(err?.message ?? "Could not load video.");
+    const err = e as { code?: string; message?: string };
+    const msg = err?.message ?? "";
+    if (err?.code === "CANCELLED" || msg.toLowerCase().includes("cancelled") || msg.toLowerCase().includes("superseded")) {
+      setLoadingState(false);
+      return;
+    }
+    showUrlError(msg || "Could not load video.");
     setLoadingState(false);
     hideVideoInfo();
   }
@@ -524,10 +539,49 @@ function renderOutputPath() {
   outputPath.title = outputDir;
 }
 
+function getPendingClip(): ClipEntry | null {
+  const startRaw = addStartInput.value.trim();
+  const endRaw = addEndInput.value.trim();
+  if (!startRaw && !endRaw) return null;
+
+  const startSeconds = parseTimestamp(startRaw);
+  const endSeconds = parseTimestamp(endRaw);
+  if (startSeconds === null || endSeconds === null || endSeconds <= startSeconds) {
+    return null;
+  }
+  const dur = currentVideoDuration();
+  if (endSeconds > dur + 1) return null;
+
+  return validateClip({
+    id: "clip-" + Date.now(),
+    startRaw: formatTimestamp(startSeconds),
+    endRaw: formatTimestamp(endSeconds),
+    startSeconds,
+    endSeconds,
+    error: null,
+  }, dur);
+}
+
 function updateExportButton() {
-  const valid = appState.phase === "video_loaded" && allClipsValid(clips);
-  exportBtn.disabled = !valid;
-  exportCount.textContent = String(clips.filter((c) => c.startSeconds !== null && c.endSeconds !== null && !c.error).length);
+  if (appState.phase !== "video_loaded") {
+    exportBtn.disabled = true;
+    exportCount.textContent = "0";
+    return;
+  }
+
+  const validExistingCount = clips.filter((c) => c.startSeconds !== null && c.endSeconds !== null && !c.error).length;
+  const pending = getPendingClip();
+
+  if (validExistingCount > 0 && allClipsValid(clips)) {
+    exportBtn.disabled = false;
+    exportCount.textContent = String(validExistingCount + (pending ? 1 : 0));
+  } else if (pending !== null) {
+    exportBtn.disabled = false;
+    exportCount.textContent = "1";
+  } else {
+    exportBtn.disabled = true;
+    exportCount.textContent = "0";
+  }
 }
 
 // ── Folder Picker ─────────────────────────────────────────────────────────────
@@ -545,6 +599,16 @@ async function handleChangeFolder() {
 async function handleExport() {
   if (appState.phase !== "video_loaded") return;
   const video = appState.video;
+
+  // If there's a valid pending clip in the input fields, auto-commit it
+  const pending = getPendingClip();
+  if (pending) {
+    clips.push(pending);
+    addStartInput.value = "";
+    addEndInput.value = "";
+    renderClips();
+  }
+
   const ipcClips = toIpcClips(clips);
   if (ipcClips.length === 0) return;
 
@@ -580,7 +644,7 @@ async function handleExport() {
   } catch (e: unknown) {
     const err = e as { message?: string };
     hideProgressOverlay();
-    showUrlError(err?.message ?? "Export failed.");
+    showClipError(err?.message ?? "Export failed.");
     appState = { phase: "video_loaded", video };
   }
 }

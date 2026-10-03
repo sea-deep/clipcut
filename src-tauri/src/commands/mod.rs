@@ -39,6 +39,8 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
             "--dump-json",
             "--no-download",
             "--no-playlist",
+            "--js-runtimes",
+            "node",
             &url,
         ])
         .output()

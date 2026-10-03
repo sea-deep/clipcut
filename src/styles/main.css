@@ -73,7 +73,43 @@
 }
 
 /* Light theme overrides */
-[data-theme="light"],
+[data-theme="light"] {
+  --color-bg: #fafafa;
+  --color-header: #f0f0f0;
+  --color-card: #ffffff;
+  --color-card-border: rgba(0, 0, 0, 0.08);
+  --color-surface: #f4f4f4;
+  --color-surface-hover: #e9e9e9;
+  --color-surface-active: #dedede;
+  --color-border: rgba(0, 0, 0, 0.12);
+  --color-border-subtle: rgba(0, 0, 0, 0.05);
+
+  --color-text: #2e3436;
+  --color-text-secondary: #5e5c64;
+  --color-text-muted: #77767b;
+  --color-text-placeholder: #9a9996;
+
+  --color-accent: #1c71d8;
+  --color-accent-hover: #3584e4;
+  --color-accent-active: #165db3;
+  --color-accent-shadow: rgba(28, 113, 216, 0.25);
+
+  --color-danger: #e01b24;
+  --color-danger-hover: #c01c28;
+  --color-danger-subtle: rgba(224, 27, 36, 0.10);
+  --color-danger-border: rgba(224, 27, 36, 0.25);
+
+  --color-success: #26a269;
+  --color-success-bg: rgba(38, 162, 105, 0.12);
+
+  --color-disabled-bg: rgba(0, 0, 0, 0.04);
+  --color-disabled-text: rgba(0, 0, 0, 0.3);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.12);
+}
+
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
     --color-bg: #fafafa;

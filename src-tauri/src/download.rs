@@ -73,14 +73,16 @@ pub async fn download_full(
     let output_template = output_path.to_string_lossy().to_string();
 
     let args: Vec<&str> = vec![
-        // Format: prefer mp4 container natively, merge to mp4
+        // Format: prefer standard HTTP/HTTPS streams, merge to mp4
         "-f",
-        "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best",
+        "bv*[protocol^=http]+ba[protocol^=http]/b[protocol^=http]/best",
         "--merge-output-format",
         "mp4",
         "--no-playlist",
         "--newline",          // One progress line per line
         "--no-part",          // Don't write .part files (we manage atomicity ourselves)
+        "--js-runtimes",
+        "node",
         "-o",
         &output_template,
         url,

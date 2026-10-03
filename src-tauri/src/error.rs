@@ -28,7 +28,7 @@ pub enum AppError {
     #[error("{0}")]
     InvalidTimestamp(String),
 
-    #[error("Export was cancelled.")]
+    #[error("Operation cancelled.")]
     Cancelled,
 
     #[error("This media format is not supported.")]
