@@ -270,51 +270,19 @@ pub async fn download_sections(
 /// Download a single clip section directly to the target output path using yt-dlp.
 /// yt-dlp handles keyframes and ultrafast transcoding at cuts, producing a clean,
 /// frame-accurate cut in seconds without downloading the full source video.
-pub async fn download_clip_section(
+async fn execute_ytdlp_cut(
     app: &AppHandle,
-    url: &str,
-    clip: &Clip,
+    args: &[&str],
+    duration: f64,
     output_path: &Path,
-    format: &OutputFormat,
-    quality: &QualityOption,
+    part_path: &Path,
+    output_str: &str,
     clip_index: usize,
     clips_total: usize,
 ) -> Result<(), AppError> {
-    let output_str = output_path.to_string_lossy().to_string();
-    let part_path = output_path.with_extension(format!("{}.part", format.extension()));
-    let _ = std::fs::remove_file(output_path);
-    let _ = std::fs::remove_file(&part_path);
-
-    let section_arg = format!("*{:.3}-{:.3}", clip.start_seconds, clip.end_seconds);
-    let duration = (clip.end_seconds - clip.start_seconds).max(0.1);
-
-    let ytdlp_cache = paths::cache_directory().join("ytdlp");
-    let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
-
-    let args: Vec<&str> = vec![
-        "--cache-dir",
-        &cache_dir_str,
-        "-f",
-        quality.format_selector(),
-        "--merge-output-format",
-        format.extension(),
-        "--force-keyframes-at-cuts",
-        "--downloader-args",
-        "ffmpeg:-preset ultrafast",
-        "--download-sections",
-        &section_arg,
-        "--no-playlist",
-        "--newline",
-        "--js-runtimes",
-        "node",
-        "-o",
-        &output_str,
-        url,
-    ];
-
     let cmd = binaries::sidecar_command(app, "yt-dlp")?;
     let (mut rx, child) = cmd
-        .args(&args)
+        .args(args)
         .spawn()
         .map_err(|e| AppError::ToolFailure {
             detail: format!("Failed to spawn yt-dlp: {}", e),
@@ -379,12 +347,12 @@ pub async fn download_clip_section(
                 crate::cancel::set_ytdlp_pid(None).await;
                 if crate::cancel::is_cancelled() {
                     let _ = std::fs::remove_file(output_path);
-                    let _ = std::fs::remove_file(&part_path);
+                    let _ = std::fs::remove_file(part_path);
                     return Err(AppError::Cancelled);
                 }
                 if !status.code.map(|c| c == 0).unwrap_or(false) {
                     let _ = std::fs::remove_file(output_path);
-                    let _ = std::fs::remove_file(&part_path);
+                    let _ = std::fs::remove_file(part_path);
                     return Err(AppError::from_ytdlp_stderr(&stderr_buf));
                 }
             }
@@ -396,14 +364,14 @@ pub async fn download_clip_section(
 
     if crate::cancel::is_cancelled() {
         let _ = std::fs::remove_file(output_path);
-        let _ = std::fs::remove_file(&part_path);
+        let _ = std::fs::remove_file(part_path);
         return Err(AppError::Cancelled);
     }
 
     // Verify output file exists and is not empty
     if !output_path.exists() || std::fs::metadata(output_path)?.len() == 0 {
         let _ = std::fs::remove_file(output_path);
-        let _ = std::fs::remove_file(&part_path);
+        let _ = std::fs::remove_file(part_path);
         return Err(AppError::ToolFailure {
             detail: format!(
                 "yt-dlp section extraction completed but output file is missing or empty: {}",
@@ -413,6 +381,120 @@ pub async fn download_clip_section(
     }
 
     Ok(())
+}
+
+/// Download a single clip section directly to the target output path using yt-dlp.
+/// Reuses pre-fetched info.json to skip YouTube HTML and JS challenge handshakes,
+/// downloading and transcoding the cut in just a few seconds.
+pub async fn download_clip_section(
+    app: &AppHandle,
+    url: &str,
+    video_id: &str,
+    clip: &Clip,
+    output_path: &Path,
+    format: &OutputFormat,
+    quality: &QualityOption,
+    clip_index: usize,
+    clips_total: usize,
+) -> Result<(), AppError> {
+    let output_str = output_path.to_string_lossy().to_string();
+    let part_path = output_path.with_extension(format!("{}.part", format.extension()));
+    let _ = std::fs::remove_file(output_path);
+    let _ = std::fs::remove_file(&part_path);
+
+    let section_arg = format!("*{:.3}-{:.3}", clip.start_seconds, clip.end_seconds);
+    let duration = (clip.end_seconds - clip.start_seconds).max(0.1);
+
+    let ytdlp_cache = paths::cache_directory().join("ytdlp");
+    let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
+
+    let info_json_path = paths::video_cache_directory(video_id).join("info.json");
+    let has_info_json = info_json_path.exists()
+        && std::fs::metadata(&info_json_path).map(|m| m.len() > 0).unwrap_or(false);
+    let info_json_str = info_json_path.to_string_lossy().to_string();
+
+    // Fast path: reuse pre-fetched video metadata to eliminate network handshake
+    if has_info_json {
+        let args: Vec<&str> = vec![
+            "--cache-dir",
+            &cache_dir_str,
+            "-4",
+            "--load-info-json",
+            &info_json_str,
+            "-f",
+            quality.format_selector(),
+            "--merge-output-format",
+            format.extension(),
+            "--force-keyframes-at-cuts",
+            "--downloader-args",
+            "ffmpeg:-preset ultrafast",
+            "--download-sections",
+            &section_arg,
+            "--no-playlist",
+            "--newline",
+            "-o",
+            &output_str,
+        ];
+
+        let res = execute_ytdlp_cut(
+            app,
+            &args,
+            duration,
+            output_path,
+            &part_path,
+            &output_str,
+            clip_index,
+            clips_total,
+        )
+        .await;
+
+        if res.is_ok() || crate::cancel::is_cancelled() {
+            return res;
+        }
+
+        tracing::warn!(
+            "Pre-fetched info.json cut failed or expired, retrying with direct URL fetch: {:?}",
+            res.err()
+        );
+        let _ = std::fs::remove_file(&info_json_path);
+        let _ = std::fs::remove_file(output_path);
+        let _ = std::fs::remove_file(&part_path);
+    }
+
+    // Fallback: direct URL fetch
+    let args: Vec<&str> = vec![
+        "--cache-dir",
+        &cache_dir_str,
+        "-4",
+        "-f",
+        quality.format_selector(),
+        "--merge-output-format",
+        format.extension(),
+        "--force-keyframes-at-cuts",
+        "--downloader-args",
+        "ffmpeg:-preset ultrafast",
+        "--download-sections",
+        &section_arg,
+        "--no-playlist",
+        "--newline",
+        "--js-runtimes",
+        "node",
+        "-o",
+        &output_str,
+        url,
+    ];
+
+    execute_ytdlp_cut(
+        app,
+        &args,
+        duration,
+        output_path,
+        &part_path,
+        &output_str,
+        clip_index,
+        clips_total,
+    )
+    .await
 }
 
 #[cfg(test)]

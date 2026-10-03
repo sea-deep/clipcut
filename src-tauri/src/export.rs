@@ -83,6 +83,7 @@ pub async fn run_export(
                 download::download_clip_section(
                     app,
                     &video.url,
+                    &video.id,
                     clip,
                     &final_path,
                     &options.format,

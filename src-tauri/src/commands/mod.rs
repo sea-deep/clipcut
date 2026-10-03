@@ -76,6 +76,13 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
         .ok_or(AppError::VideoUnavailable)?
         .to_string();
 
+    // Cache info.json so subsequent clipping operations skip YouTube handshake & JS challenges
+    let video_cache = paths::video_cache_directory(&id);
+    if paths::ensure_dir(&video_cache).is_ok() {
+        let info_json_path = video_cache.join("info.json");
+        let _ = std::fs::write(&info_json_path, &output.stdout);
+    }
+
     let title = json["title"]
         .as_str()
         .unwrap_or("Untitled")
