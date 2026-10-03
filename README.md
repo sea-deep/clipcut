@@ -10,9 +10,12 @@ Official release packages are built for Windows and Linux on `x86_64` architectu
 
 | Platform | Package Format | Distribution File |
 |---|---|---|
-| **Linux (x86_64)** | AppImage (Standalone) | `ClipCut_<version>_amd64.AppImage` |
-| **Linux (x86_64)** | Debian / Ubuntu Package | `clipcut_<version>_amd64.deb` |
-| **Windows (10 / 11)** | NSIS Installer | `ClipCut_<version>_x64-setup.exe` |
+| **Linux (Universal)** | Standalone AppImage | `ClipCut_<version>_amd64.AppImage` |
+| **Linux (Arch Linux / Manjaro)** | Pacman Package | `clipcut-bin-<version>-1-x86_64.pkg.tar.zst` |
+| **Linux (Debian / Ubuntu)** | Debian Package | `ClipCut_<version>_amd64.deb` |
+| **Windows (10 / 11)** | NSIS Setup Installer | `ClipCut_<version>_x64-setup.exe` |
+| **macOS (Apple Silicon)** | Apple Disk Image | `ClipCut_<version>_aarch64.dmg` |
+| **macOS (Intel)** | Apple Disk Image | `ClipCut_<version>_x64.dmg` |
 
 Binary downloads and release notes are published under [GitHub Releases](https://github.com/sea-deep/clipcut/releases).
 

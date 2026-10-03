@@ -1,0 +1,16 @@
+# Maintainer: Dipak Agrahari <seadeepie@proton.me>
+pkgname=clipcut-bin
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="Extract timestamped video segments from YouTube URLs using isolated yt-dlp and ffmpeg sidecars"
+arch=('x86_64')
+url="https://github.com/sea-deep/clipcut"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'ffmpeg' 'yt-dlp')
+provides=('clipcut')
+conflicts=('clipcut')
+
+package() {
+  tar -xzf "$startdir/../../src-tauri/target/release/bundle/deb/ClipCut_0.1.0_amd64/data.tar.gz" -C "$pkgdir"
+  rm -f "$pkgdir/usr/bin/ffmpeg" "$pkgdir/usr/bin/ffprobe" "$pkgdir/usr/bin/yt-dlp"
+}

@@ -21,5 +21,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Auto-load trigger on valid YouTube URL paste.
   - System theme integration with manual dark and light mode toggle.
 - **Packaging & CI/CD**:
-  - Sidecar downloading script (`scripts/download-sidecars.sh`) for Linux (`x86_64-unknown-linux-gnu`) and Windows (`x86_64-pc-windows-msvc`).
-  - GitHub Actions matrix workflow generating Windows setup executables (`.exe`) and Linux packages (`.AppImage`, `.deb`).
+  - Sidecar downloading script (`scripts/download-sidecars.sh`) for Linux, Windows, and macOS (Apple Silicon and Intel).
+  - Arch Linux native package (`clipcut-bin-0.1.0-1-x86_64.pkg.tar.zst`) with PKGBUILD.
+  - GitHub Actions matrix workflow generating Windows setup executables (`.exe`), Linux packages (`.AppImage`, `.deb`), and macOS disk images (`.dmg`).

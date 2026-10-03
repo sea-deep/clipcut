@@ -30,6 +30,16 @@ jobs:
             label: Windows x86_64
             artifact_glob: "src-tauri/target/release/bundle/**/*-setup.exe"
 
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            label: macOS Apple Silicon (arm64)
+            artifact_glob: "src-tauri/target/release/bundle/**/*.dmg"
+
+          - os: macos-13
+            target: x86_64-apple-darwin
+            label: macOS Intel (x86_64)
+            artifact_glob: "src-tauri/target/release/bundle/**/*.dmg"
+
     runs-on: ${{ matrix.os }}
     name: Build — ${{ matrix.label }}
 
@@ -91,8 +101,11 @@ jobs:
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
 
             **Downloads:**
-            - **Windows:** `ClipCut-*-x64-setup.exe`
-            - **Linux:** `ClipCut-*.AppImage` / `clipcut-*.deb`
+            - **Linux (Universal):** `ClipCut_*.AppImage`
+            - **Debian / Ubuntu:** `ClipCut_*_amd64.deb`
+            - **Arch Linux:** `clipcut-bin-*-x86_64.pkg.tar.zst`
+            - **Windows:** `ClipCut_*_x64-setup.exe`
+            - **macOS:** `ClipCut_*_universal.dmg` / `ClipCut_*_aarch64.dmg`
           releaseDraft: false
           prerelease: false
 

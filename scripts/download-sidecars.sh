@@ -52,6 +52,9 @@ download_ytdlp() {
       dest="${dest}.exe"
       local url="https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp.exe"
       ;;
+    aarch64-apple-darwin|x86_64-apple-darwin)
+      local url="https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_macos"
+      ;;
     *)
       echo "WARNING: No known yt-dlp binary for target '$target'. Skipping."
       return
@@ -69,27 +72,7 @@ download_ffmpeg() {
   local target="$1"
   local dest_ffmpeg="$BINDIR/ffmpeg-${target}"
   local dest_ffprobe="$BINDIR/ffprobe-${target}"
-
-  case "$target" in
-    x86_64-unknown-linux-gnu)
-      local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
-      local strip_components=2
-      ;;
-    aarch64-unknown-linux-gnu)
-      local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz"
-      local strip_components=2
-      ;;
-    x86_64-pc-windows-msvc)
-      dest_ffmpeg="${dest_ffmpeg}.exe"
-      dest_ffprobe="${dest_ffprobe}.exe"
-      local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
-      local strip_components=0  # handled differently for zip
-      ;;
-    *)
-      echo "WARNING: No known ffmpeg binary for target '$target'. Skipping."
-      return
-      ;;
-  esac
+  local tmpdir=""
 
   if [ -f "$dest_ffmpeg" ] && [ -s "$dest_ffmpeg" ]; then
     echo "ffmpeg already present: $dest_ffmpeg"
@@ -99,29 +82,65 @@ download_ffmpeg() {
     fi
   fi
 
-  echo "Downloading ffmpeg (latest GPL) for ${target}..."
-
-  local tmpdir
-  tmpdir="$(mktemp -d)"
+  echo "Downloading ffmpeg for ${target}..."
 
   case "$target" in
+    x86_64-unknown-linux-gnu)
+      local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
+      local tmpdir
+      tmpdir="$(mktemp -d)"
+      curl -fsSL --retry 3 "$url" \
+        | tar -xJ --strip-components=2 -C "$tmpdir" --wildcards '*/bin/ffmpeg' '*/bin/ffprobe'
+      mv "$tmpdir/ffmpeg" "$dest_ffmpeg"
+      mv "$tmpdir/ffprobe" "$dest_ffprobe"
+      chmod +x "$dest_ffmpeg" "$dest_ffprobe"
+      rm -rf "$tmpdir"
+      ;;
+    aarch64-unknown-linux-gnu)
+      local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz"
+      local tmpdir
+      tmpdir="$(mktemp -d)"
+      curl -fsSL --retry 3 "$url" \
+        | tar -xJ --strip-components=2 -C "$tmpdir" --wildcards '*/bin/ffmpeg' '*/bin/ffprobe'
+      mv "$tmpdir/ffmpeg" "$dest_ffmpeg"
+      mv "$tmpdir/ffprobe" "$dest_ffprobe"
+      chmod +x "$dest_ffmpeg" "$dest_ffprobe"
+      rm -rf "$tmpdir"
+      ;;
     x86_64-pc-windows-msvc)
+      dest_ffmpeg="${dest_ffmpeg}.exe"
+      dest_ffprobe="${dest_ffprobe}.exe"
+      local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
+      local tmpdir
+      tmpdir="$(mktemp -d)"
       local zipfile="$tmpdir/ffmpeg.zip"
       curl -fsSL --retry 3 "$url" -o "$zipfile"
       unzip -j "$zipfile" '*/bin/ffmpeg.exe' '*/bin/ffprobe.exe' -d "$tmpdir"
       mv "$tmpdir/ffmpeg.exe" "$dest_ffmpeg"
       mv "$tmpdir/ffprobe.exe" "$dest_ffprobe"
+      rm -rf "$tmpdir"
+      ;;
+    aarch64-apple-darwin)
+      local ffmpeg_url="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-arm64.gz"
+      local ffprobe_url="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-arm64.gz"
+      curl -fsSL --retry 3 "$ffmpeg_url" | gzip -d > "$dest_ffmpeg"
+      curl -fsSL --retry 3 "$ffprobe_url" | gzip -d > "$dest_ffprobe"
+      chmod +x "$dest_ffmpeg" "$dest_ffprobe"
+      ;;
+    x86_64-apple-darwin)
+      local ffmpeg_url="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-darwin-x64.gz"
+      local ffprobe_url="https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-darwin-x64.gz"
+      curl -fsSL --retry 3 "$ffmpeg_url" | gzip -d > "$dest_ffmpeg"
+      curl -fsSL --retry 3 "$ffprobe_url" | gzip -d > "$dest_ffprobe"
+      chmod +x "$dest_ffmpeg" "$dest_ffprobe"
       ;;
     *)
-      curl -fsSL --retry 3 "$url" \
-        | tar -xJ --strip-components="$strip_components" -C "$tmpdir" --wildcards '*/bin/ffmpeg' '*/bin/ffprobe'
-      mv "$tmpdir/ffmpeg" "$dest_ffmpeg"
-      mv "$tmpdir/ffprobe" "$dest_ffprobe"
-      chmod +x "$dest_ffmpeg" "$dest_ffprobe"
+      echo "WARNING: No known ffmpeg binary for target '$target'. Skipping."
+      return
       ;;
   esac
 
-  rm -rf "$tmpdir"
+  [ -n "$tmpdir" ] && rm -rf "$tmpdir"
   echo "  → $dest_ffmpeg"
   echo "  → $dest_ffprobe"
 }
