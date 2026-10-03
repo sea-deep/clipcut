@@ -9,12 +9,13 @@ import {
   type ExportResult,
   type VideoInfo,
   allClipsValid,
+  clipFromRange,
   clipsFromPaste,
   emptyClip,
   toIpcClips,
   validateClip,
 } from "./state";
-import { formatTimestamp } from "./timestamps";
+import { formatTimestamp, parseRange, parseTimestamp } from "./timestamps";
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,8 @@ const videoTitleEl = $("video-title");
 const videoDurationEl = $("video-duration");
 const previewBtn = $<HTMLButtonElement>("preview-btn");
 const clipsList = $("clips-list");
-const rangeInput = $<HTMLInputElement>("range-input");
+const addStartInput = $<HTMLInputElement>("add-start-input");
+const addEndInput = $<HTMLInputElement>("add-end-input");
 const addClipBtn = $<HTMLButtonElement>("add-clip-btn");
 const clipError = $("clip-error");
 const outputPath = $("output-path");
@@ -109,10 +111,23 @@ themeToggle.addEventListener("click", () => {
 // ── Event Listeners ───────────────────────────────────────────────────────────
 
 function setupEventListeners() {
-  // URL load
+  // URL load — auto-load immediately on paste or typing valid URL
   loadBtn.addEventListener("click", handleLoad);
   urlInput.addEventListener("keydown", (e) => {
     if (e.key === "Enter") handleLoad();
+  });
+  urlInput.addEventListener("paste", (e) => {
+    const pasted = e.clipboardData?.getData("text")?.trim() || "";
+    if (pasted.includes("youtu")) {
+      urlInput.value = pasted;
+      setTimeout(handleLoad, 30);
+    }
+  });
+  urlInput.addEventListener("input", () => {
+    const val = urlInput.value.trim();
+    if (val.includes("youtube.com/watch") || val.includes("youtu.be/") || val.includes("youtube.com/shorts/")) {
+      handleLoad();
+    }
   });
 
   // URL drag-and-drop
@@ -134,17 +149,47 @@ function setupEventListeners() {
     }
   });
 
-  // Add clip
-  addClipBtn.addEventListener("click", addEmptyClip);
+  // Dual Clip Fields (Tab-navigable, accepts bare seconds or MM:SS)
+  addClipBtn.addEventListener("click", handleAddClip);
 
-  // Paste range
-  rangeInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") handleRangeInput();
+  addStartInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addEndInput.focus();
+    }
   });
-  rangeInput.addEventListener("paste", (e) => {
-    e.preventDefault();
+  addStartInput.addEventListener("blur", () => {
+    const parsed = parseTimestamp(addStartInput.value);
+    if (parsed !== null) {
+      addStartInput.value = formatTimestamp(parsed);
+    }
+  });
+  addStartInput.addEventListener("paste", (e) => {
     const text = e.clipboardData?.getData("text") ?? "";
-    handleRangeInput(text);
+    if (text.includes("-") || text.includes("\n")) {
+      e.preventDefault();
+      handleRangePaste(text);
+    }
+  });
+
+  addEndInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddClip();
+    }
+  });
+  addEndInput.addEventListener("blur", () => {
+    const parsed = parseTimestamp(addEndInput.value);
+    if (parsed !== null) {
+      addEndInput.value = formatTimestamp(parsed);
+    }
+  });
+  addEndInput.addEventListener("paste", (e) => {
+    const text = e.clipboardData?.getData("text") ?? "";
+    if (text.includes("-") || text.includes("\n")) {
+      e.preventDefault();
+      handleRangePaste(text);
+    }
   });
 
   // Change folder
@@ -181,22 +226,6 @@ function setupEventListeners() {
 
   // Preview
   previewBtn.addEventListener("click", handlePreview);
-
-  // Segmented mode control
-  const segmentedItems = document.querySelectorAll<HTMLButtonElement>(".segmented-item");
-  segmentedItems.forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const mode = btn.dataset.mode;
-      if (!mode) return;
-      segmentedItems.forEach((b) => {
-        const isActive = b === btn;
-        b.classList.toggle("active", isActive);
-        b.setAttribute("aria-checked", isActive ? "true" : "false");
-      });
-      const radio = document.querySelector<HTMLInputElement>(`input[name="mode"][value="${mode}"]`);
-      if (radio) radio.checked = true;
-    });
-  });
 }
 
 // ── Load Video ────────────────────────────────────────────────────────────────
@@ -268,27 +297,96 @@ function addEmptyClip() {
   last?.focus();
 }
 
-function handleRangeInput(text?: string) {
-  const raw = text ?? rangeInput.value.trim();
-  if (!raw) {
+function handleAddClip() {
+  const startRaw = addStartInput.value.trim();
+  const endRaw = addEndInput.value.trim();
+
+  // If both empty, add an empty row to the list for manual direct typing
+  if (!startRaw && !endRaw) {
     addEmptyClip();
     return;
   }
 
-  // Try multi-range paste first
-  const multi = clipsFromPaste(raw);
+  // Check if someone entered/pasted a combined range into either field
+  const range = parseRange(startRaw) || parseRange(endRaw);
+  if (range) {
+    const dur = currentVideoDuration();
+    clips.push(validateClip(clipFromRange(range), dur));
+    addStartInput.value = "";
+    addEndInput.value = "";
+    clipError.classList.add("hidden");
+    renderClips();
+    updateExportButton();
+    addStartInput.focus();
+    return;
+  }
+
+  // Parse start (accepts bare seconds like "15" or timestamps like "0:15")
+  const startSeconds = parseTimestamp(startRaw);
+  if (startSeconds === null) {
+    showClipError(`Invalid start time: "${startRaw}".`);
+    addStartInput.focus();
+    return;
+  }
+
+  // Parse end (accepts bare seconds like "42" or timestamps like "0:42")
+  const endSeconds = parseTimestamp(endRaw);
+  if (endSeconds === null) {
+    showClipError(`Invalid end time: "${endRaw}".`);
+    addEndInput.focus();
+    return;
+  }
+
+  if (endSeconds <= startSeconds) {
+    showClipError("End time must be after start time.");
+    addEndInput.focus();
+    return;
+  }
+
+  const dur = currentVideoDuration();
+  if (endSeconds > dur + 1) {
+    showClipError(`End time exceeds video duration (${formatTimestamp(dur)}).`);
+    addEndInput.focus();
+    return;
+  }
+
+  const newClip = validateClip({
+    id: String(Date.now() + Math.random()),
+    startRaw: formatTimestamp(startSeconds),
+    endRaw: formatTimestamp(endSeconds),
+    startSeconds,
+    endSeconds,
+    error: null,
+  }, dur);
+
+  clips.push(newClip);
+  addStartInput.value = "";
+  addEndInput.value = "";
+  clipError.classList.add("hidden");
+  renderClips();
+  updateExportButton();
+  addStartInput.focus();
+}
+
+function handleRangePaste(pastedText: string) {
+  const multi = clipsFromPaste(pastedText);
   if (multi.length > 0) {
     const dur = currentVideoDuration();
     clips.push(...multi.map((c) => validateClip(c, dur)));
-    rangeInput.value = "";
+    addStartInput.value = "";
+    addEndInput.value = "";
+    clipError.classList.add("hidden");
     renderClips();
     updateExportButton();
-  } else {
-    // Show error below range input
-    clipError.textContent = "Could not parse range. Use format: 0:15-0:42";
-    clipError.classList.remove("hidden");
-    setTimeout(() => clipError.classList.add("hidden"), 3000);
+    return true;
   }
+  return false;
+}
+
+function showClipError(msg: string) {
+  clipError.textContent = msg;
+  clipError.classList.remove("hidden");
+  setTimeout(() => clipError.classList.add("hidden"), 3500);
 }
 
 function removeClip(id: string) {
@@ -341,7 +439,6 @@ function renderClips() {
           type="text"
           class="adw-input clip-start${clip.error && clip.startRaw ? " input--error" : ""}"
           value="${escHtml(clip.startRaw)}"
-          placeholder="0:15"
           aria-label="Start time"
         />
         <span class="clip-arrow" aria-hidden="true">
@@ -351,7 +448,6 @@ function renderClips() {
           type="text"
           class="adw-input clip-end${clip.error ? " input--error" : ""}"
           value="${escHtml(clip.endRaw)}"
-          placeholder="0:42"
           aria-label="End time"
         />
       </div>
@@ -366,9 +462,22 @@ function renderClips() {
     const removeBtn = row.querySelector<HTMLButtonElement>(".clip-remove")!;
 
     startInput.addEventListener("input", () => onClipStartChange(clip.id, startInput.value));
-    startInput.addEventListener("blur", () => onClipStartChange(clip.id, startInput.value));
+    startInput.addEventListener("blur", () => {
+      onClipStartChange(clip.id, startInput.value);
+      const parsed = parseTimestamp(startInput.value);
+      if (parsed !== null) {
+        startInput.value = formatTimestamp(parsed);
+      }
+    });
+
     endInput.addEventListener("input", () => onClipEndChange(clip.id, endInput.value));
-    endInput.addEventListener("blur", () => onClipEndChange(clip.id, endInput.value));
+    endInput.addEventListener("blur", () => {
+      onClipEndChange(clip.id, endInput.value);
+      const parsed = parseTimestamp(endInput.value);
+      if (parsed !== null) {
+        endInput.value = formatTimestamp(parsed);
+      }
+    });
     endInput.addEventListener("keydown", (e) => onClipEndKeyDown(e, clip.id));
     removeBtn.addEventListener("click", () => removeClip(clip.id));
 
@@ -439,13 +548,11 @@ async function handleExport() {
   const ipcClips = toIpcClips(clips);
   if (ipcClips.length === 0) return;
 
-  const modeInput = document.querySelector<HTMLInputElement>('input[name="mode"]:checked');
-  const mode = (modeInput?.value ?? "accurate") as "accurate" | "fast";
   const format = formatSelect.value as "mp4" | "webm" | "mkv";
 
   const options: ExportOptions = {
     output_directory: outputDir,
-    mode,
+    mode: "accurate",
     format,
   };
 

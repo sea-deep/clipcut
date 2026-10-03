@@ -117,9 +117,9 @@
               id="url-input"
               type="text"
               class="adw-input"
-              placeholder="https://youtube.com/watch?v=..."
               autocomplete="off"
               spellcheck="false"
+              aria-label="YouTube URL"
             />
             <button id="load-btn" class="btn btn--primary">
               <span>Load</span>
@@ -154,20 +154,32 @@
         <section class="section" id="clips-section">
           <div class="section-header-row">
             <label class="section-label">Clips</label>
-            <span class="clips-hint text-muted">Format: 0:15 or 1:02:15</span>
+            <span class="clips-hint text-muted">Start → End</span>
           </div>
 
           <div id="clips-list" class="clips-list" role="list"></div>
 
           <div class="clip-add-container">
-            <input
-              id="range-input"
-              type="text"
-              class="adw-input adw-input--mono"
-              placeholder="Paste ranges (e.g. 0:15-0:42, 2:10-2:35)..."
-              autocomplete="off"
-            />
-            <button id="add-clip-btn" class="btn btn--secondary">
+            <div class="clip-add-fields">
+              <input
+                id="add-start-input"
+                type="text"
+                class="adw-input adw-input--mono clip-field"
+                autocomplete="off"
+                aria-label="New clip start time"
+              />
+              <span class="clip-arrow" aria-hidden="true">
+                <svg class="icon icon-sm"><use href="#icon-arrow-right"/></svg>
+              </span>
+              <input
+                id="add-end-input"
+                type="text"
+                class="adw-input adw-input--mono clip-field"
+                autocomplete="off"
+                aria-label="New clip end time"
+              />
+            </div>
+            <button id="add-clip-btn" class="btn btn--secondary" type="button">
               <svg class="icon icon-sm"><use href="#icon-plus"/></svg>
               <span>Add Clip</span>
             </button>
@@ -195,26 +207,6 @@
               <button id="change-folder-btn" class="btn btn--flat btn--sm">Change</button>
             </div>
           </div>
-        </section>
-
-        <!-- Cut Mode Segmented Control (Libadwaita style) -->
-        <section class="section section--mode">
-          <div class="mode-control-header">
-            <label class="section-label">Cut Mode</label>
-          </div>
-          <div class="adw-segmented-button" role="radiogroup" aria-label="Cut mode">
-            <button type="button" class="segmented-item active" data-mode="accurate" role="radio" aria-checked="true">
-              <span class="mode-title">Accurate</span>
-              <span class="mode-desc">Exact frame cuts (re-encoded)</span>
-            </button>
-            <button type="button" class="segmented-item" data-mode="fast" role="radio" aria-checked="false">
-              <span class="mode-title">Fast</span>
-              <span class="mode-desc">Instant stream copy (keyframe)</span>
-            </button>
-          </div>
-          <!-- Hidden radio inputs for compatibility with existing state logic -->
-          <input type="radio" name="mode" value="accurate" checked style="display:none" />
-          <input type="radio" name="mode" value="fast" style="display:none" />
         </section>
 
         <!-- Export Action Row -->

@@ -20,7 +20,7 @@ pub async fn extract_clip(
     part_path: &Path,
     final_path: &Path,
     format: &OutputFormat,
-    mode: &ExportMode,
+    _mode: &ExportMode,
     clip_index: usize,
     clips_total: usize,
 ) -> Result<(), AppError> {
@@ -28,81 +28,62 @@ pub async fn extract_clip(
     let output_str = part_path.to_string_lossy().to_string();
 
     let start_str = format!("{:.3}", clip.start_seconds);
-    let end_str = format!("{:.3}", clip.end_seconds);
+    let duration_str = format!("{:.3}", clip.end_seconds - clip.start_seconds);
     let duration_us = ((clip.end_seconds - clip.start_seconds) * 1_000_000.0) as i64;
 
-    let args: Vec<String> = match mode {
-        ExportMode::Accurate => {
-            // Decode-based seeking: precise to frame level.
-            // -ss after -i = decode from start (slower but accurate).
-            let (vcodec, acodec, extra) = match format {
-                OutputFormat::Mp4 | OutputFormat::Mkv => (
-                    "libx264",
-                    "aac",
-                    vec![
-                        "-preset".to_string(),
-                        "fast".to_string(),
-                        "-crf".to_string(),
-                        "18".to_string(),
-                        "-b:a".to_string(),
-                        "192k".to_string(),
-                        "-movflags".to_string(),
-                        "+faststart".to_string(),
-                    ],
-                ),
-                OutputFormat::Webm => (
-                    "libvpx-vp9",
-                    "libopus",
-                    vec![
-                        "-crf".to_string(),
-                        "30".to_string(),
-                        "-b:v".to_string(),
-                        "0".to_string(),
-                        "-b:a".to_string(),
-                        "128k".to_string(),
-                    ],
-                ),
-            };
-            let mut a = vec![
-                "-y".to_string(),
-                "-i".to_string(),
-                source_str,
-                "-ss".to_string(),
-                start_str,
-                "-to".to_string(),
-                end_str,
-                "-c:v".to_string(),
-                vcodec.to_string(),
-                "-c:a".to_string(),
-                acodec.to_string(),
-            ];
-            a.extend(extra);
-            a.push("-progress".to_string());
-            a.push("pipe:1".to_string());
-            a.push(output_str);
-            a
-        }
-        ExportMode::Fast => {
-            // Input-seeking: cut at keyframe boundary, stream copy.
-            // May start up to a few seconds early.
+    // Input-seeking (-ss before -i) jumps instantly to nearest keyframe,
+    // then accurately decodes from there to the exact frame.
+    // Near-instant seek + frame-accurate cut.
+    let (vcodec, acodec, extra) = match format {
+        OutputFormat::Mp4 | OutputFormat::Mkv => (
+            "libx264",
+            "aac",
             vec![
-                "-y".to_string(),
-                "-ss".to_string(),
-                start_str,
-                "-to".to_string(),
-                end_str,
-                "-i".to_string(),
-                source_str,
-                "-c".to_string(),
-                "copy".to_string(),
-                "-avoid_negative_ts".to_string(),
-                "make_start_zero".to_string(),
-                "-progress".to_string(),
-                "pipe:1".to_string(),
-                output_str,
-            ]
-        }
+                "-preset".to_string(),
+                "veryfast".to_string(),
+                "-crf".to_string(),
+                "18".to_string(),
+                "-b:a".to_string(),
+                "192k".to_string(),
+                "-movflags".to_string(),
+                "+faststart".to_string(),
+            ],
+        ),
+        OutputFormat::Webm => (
+            "libvpx-vp9",
+            "libopus",
+            vec![
+                "-deadline".to_string(),
+                "realtime".to_string(),
+                "-cpu-used".to_string(),
+                "4".to_string(),
+                "-crf".to_string(),
+                "30".to_string(),
+                "-b:v".to_string(),
+                "0".to_string(),
+                "-b:a".to_string(),
+                "128k".to_string(),
+            ],
+        ),
     };
+
+    let mut args = vec![
+        "-y".to_string(),
+        "-ss".to_string(),
+        start_str,
+        "-i".to_string(),
+        source_str,
+        "-t".to_string(),
+        duration_str,
+        "-c:v".to_string(),
+        vcodec.to_string(),
+        "-c:a".to_string(),
+        acodec.to_string(),
+    ];
+    args.extend(extra);
+    args.push("-progress".to_string());
+    args.push("pipe:1".to_string());
+    args.push(output_str);
 
     let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
 

@@ -580,23 +580,38 @@ body {
   padding: 2px 4px;
 }
 
-/* Add Clip / Paste Container */
+/* Add Clip Fields Container */
 .clip-add-container {
   display: flex;
+  align-items: center;
   gap: var(--space-2);
   margin-top: var(--space-1);
 }
 
-.clip-add-container .adw-input {
+.clip-add-fields {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 6px var(--space-3);
+  padding: 4px var(--space-3);
+  box-shadow: var(--shadow-sm);
+  transition: border-color var(--anim-quick), box-shadow var(--anim-quick);
 }
 
-.clip-add-container .adw-input:focus {
+.clip-add-fields:focus-within {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 2px var(--color-accent-shadow);
+}
+
+.clip-add-fields .clip-field {
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  width: 100%;
 }
 
 /* ── Output Destination Card ──────────────────────────────────────────────── */
