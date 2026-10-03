@@ -186,17 +186,28 @@ mod tests {
     #[test]
     fn quality_option_defaults_and_selectors() {
         assert_eq!(QualityOption::default(), QualityOption::Highest);
-        assert!(QualityOption::Highest.format_selector().contains("bv*[protocol^=http]"));
-        assert!(QualityOption::P1080.format_selector().contains("height<=1080"));
-        assert!(QualityOption::P720.format_selector().contains("height<=720"));
-        assert!(QualityOption::P480.format_selector().contains("height<=480"));
-        assert!(QualityOption::P360.format_selector().contains("height<=360"));
+        assert!(QualityOption::Highest
+            .format_selector()
+            .contains("bv*[protocol^=http]"));
+        assert!(QualityOption::P1080
+            .format_selector()
+            .contains("height<=1080"));
+        assert!(QualityOption::P720
+            .format_selector()
+            .contains("height<=720"));
+        assert!(QualityOption::P480
+            .format_selector()
+            .contains("height<=480"));
+        assert!(QualityOption::P360
+            .format_selector()
+            .contains("height<=360"));
 
         let json = r#"{"output_directory":"/tmp","mode":"accurate","format":"mp4"}"#;
         let opt: ExportOptions = serde_json::from_str(json).unwrap();
         assert_eq!(opt.quality, QualityOption::Highest);
 
-        let json_720 = r#"{"output_directory":"/tmp","mode":"accurate","format":"mp4","quality":"720p"}"#;
+        let json_720 =
+            r#"{"output_directory":"/tmp","mode":"accurate","format":"mp4","quality":"720p"}"#;
         let opt_720: ExportOptions = serde_json::from_str(json_720).unwrap();
         assert_eq!(opt_720.quality, QualityOption::P720);
     }

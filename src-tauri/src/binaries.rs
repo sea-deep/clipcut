@@ -23,8 +23,7 @@ pub fn sidecar_command(
 /// Quick health check — runs `<binary> --version` and returns the version string.
 /// Non-blocking; called from setup() in a background task.
 pub async fn check_version(app: &AppHandle, name: &str, flag: &str) -> Result<String, AppError> {
-    let output = sidecar_command(app, name)
-        .map_err(|e| e)?
+    let output = sidecar_command(app, name)?
         .args([flag])
         .output()
         .await

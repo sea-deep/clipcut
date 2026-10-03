@@ -7,8 +7,7 @@ use crate::{
     binaries,
     clip::{Clip, ExportOptions, ExportResult, VideoInfo},
     error::AppError,
-    export,
-    paths,
+    export, paths,
 };
 
 /// Generation counter to prevent stale metadata from overwriting newer requests.
@@ -36,9 +35,8 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
     let ytdlp_cache = paths::cache_directory().join("ytdlp");
     let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
 
-    let output = binaries::sidecar_command(&app, "yt-dlp")
-        .map_err(|e| e)?
-        .args(&[
+    let output = binaries::sidecar_command(&app, "yt-dlp")?
+        .args([
             "--cache-dir",
             &cache_dir_str,
             "--dump-json",
@@ -83,19 +81,13 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
         let _ = std::fs::write(&info_json_path, &output.stdout);
     }
 
-    let title = json["title"]
-        .as_str()
-        .unwrap_or("Untitled")
-        .to_string();
+    let title = json["title"].as_str().unwrap_or("Untitled").to_string();
 
     let duration_seconds = json["duration"]
         .as_f64()
         .ok_or(AppError::VideoUnavailable)?;
 
-    let thumbnail_url = json["thumbnail"]
-        .as_str()
-        .unwrap_or("")
-        .to_string();
+    let thumbnail_url = json["thumbnail"].as_str().unwrap_or("").to_string();
 
     Ok(VideoInfo {
         id,

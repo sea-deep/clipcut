@@ -1,4 +1,9 @@
-import { parseMultipleRanges, parseTimestamp, formatTimestamp, type ParsedRange } from "./timestamps";
+import {
+  parseMultipleRanges,
+  parseTimestamp,
+  formatTimestamp,
+  type ParsedRange,
+} from "./timestamps";
 
 // Re-export domain types that mirror the Rust structs
 export interface VideoInfo {
@@ -75,24 +80,36 @@ export function emptyClip(): ClipEntry {
 }
 
 /** Parse and validate a ClipEntry given the video duration */
-export function validateClip(
-  clip: ClipEntry,
-  videoDuration: number
-): ClipEntry {
+export function validateClip(clip: ClipEntry, videoDuration: number): ClipEntry {
   const start = parseTimestamp(clip.startRaw);
   const end = parseTimestamp(clip.endRaw);
 
   if (start === null && clip.startRaw.trim()) {
-    return { ...clip, startSeconds: null, endSeconds: null, error: `Invalid start time: "${clip.startRaw}"` };
+    return {
+      ...clip,
+      startSeconds: null,
+      endSeconds: null,
+      error: `Invalid start time: "${clip.startRaw}"`,
+    };
   }
   if (end === null && clip.endRaw.trim()) {
-    return { ...clip, startSeconds: start, endSeconds: null, error: `Invalid end time: "${clip.endRaw}"` };
+    return {
+      ...clip,
+      startSeconds: start,
+      endSeconds: null,
+      error: `Invalid end time: "${clip.endRaw}"`,
+    };
   }
   if (start === null || end === null) {
     return { ...clip, startSeconds: start, endSeconds: end, error: null };
   }
   if (end <= start) {
-    return { ...clip, startSeconds: start, endSeconds: end, error: "End time must be after start time." };
+    return {
+      ...clip,
+      startSeconds: start,
+      endSeconds: end,
+      error: "End time must be after start time.",
+    };
   }
   if (end > videoDuration + 1) {
     return {

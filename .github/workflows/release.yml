@@ -4,6 +4,12 @@ on:
   push:
     tags:
       - "v*"
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "Release tag name (e.g. v0.1.0)"
+        required: false
+        default: "v0.1.0"
 
 permissions:
   contents: write
@@ -79,14 +85,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: ${{ github.ref_name }}
-          releaseName: "ClipCut ${{ github.ref_name }}"
+          tagName: ${{ inputs.tag_name || github.ref_name }}
+          releaseName: "ClipCut ${{ inputs.tag_name || github.ref_name }}"
           releaseBody: |
             See [CHANGELOG.md](https://github.com/${{ github.repository }}/blob/main/CHANGELOG.md) for details.
 
             **Downloads:**
             - **Windows:** `ClipCut-*-x64-setup.exe`
-            - **Linux:** `ClipCut-*.AppImage`
+            - **Linux:** `ClipCut-*.AppImage` / `clipcut-*.deb`
           releaseDraft: false
           prerelease: false
 

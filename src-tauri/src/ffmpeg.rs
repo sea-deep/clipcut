@@ -13,6 +13,7 @@ use crate::{
 ///
 /// `part_path` is the temporary .part path written during extraction.
 /// After success, it is renamed atomically to `final_path`.
+#[allow(clippy::too_many_arguments)]
 pub async fn extract_clip(
     app: &AppHandle,
     source: &Path,
@@ -170,11 +171,7 @@ pub async fn extract_clip(
     // Atomic rename: .part → final
     std::fs::rename(part_path, final_path)?;
 
-    tracing::info!(
-        "Clip {} written: {}",
-        clip_index + 1,
-        final_path.display()
-    );
+    tracing::info!("Clip {} written: {}", clip_index + 1, final_path.display());
     Ok(())
 }
 
@@ -183,10 +180,13 @@ pub async fn extract_clip(
 pub async fn probe_duration(app: &AppHandle, path: &Path) -> Result<f64, AppError> {
     let path_str = path.to_string_lossy().to_string();
     let output = binaries::sidecar_command(app, "ffprobe")?
-        .args(&[
-            "-v", "quiet",
-            "-print_format", "json",
-            "-show_entries", "format=duration",
+        .args([
+            "-v",
+            "quiet",
+            "-print_format",
+            "json",
+            "-show_entries",
+            "format=duration",
             &path_str,
         ])
         .output()

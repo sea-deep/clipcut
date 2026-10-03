@@ -4,8 +4,7 @@ use crate::{
     clip::{Clip, ExportOptions, ExportResult, VideoInfo},
     download::{self, DownloadStrategy},
     error::AppError,
-    ffmpeg,
-    paths,
+    ffmpeg, paths,
     progress::{self, ProgressEvent},
 };
 use tauri::AppHandle;
@@ -77,7 +76,12 @@ pub async fn run_export(
                     });
                 }
 
-                let filename = paths::clip_filename(i, clip.start_seconds, clip.end_seconds, options.format.extension());
+                let filename = paths::clip_filename(
+                    i,
+                    clip.start_seconds,
+                    clip.end_seconds,
+                    options.format.extension(),
+                );
                 let final_path = paths::resolve_output_path(&output_dir, &filename);
 
                 download::download_clip_section(
@@ -134,9 +138,15 @@ pub async fn run_export(
                     });
                 }
 
-                let filename = paths::clip_filename(i, clip.start_seconds, clip.end_seconds, options.format.extension());
+                let filename = paths::clip_filename(
+                    i,
+                    clip.start_seconds,
+                    clip.end_seconds,
+                    options.format.extension(),
+                );
                 let final_path = paths::resolve_output_path(&output_dir, &filename);
-                let part_path = final_path.with_extension(format!("{}.part", options.format.extension()));
+                let part_path =
+                    final_path.with_extension(format!("{}.part", options.format.extension()));
 
                 ffmpeg::extract_clip(
                     app,

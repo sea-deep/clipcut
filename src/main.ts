@@ -58,7 +58,8 @@ export interface QueueJob {
   format: "mp4" | "webm" | "mkv";
   quality: QualityOption;
   outputDir: string;
-  status: "queued" | "preparing" | "downloading" | "processing" | "completed" | "error" | "cancelled";
+  status:
+    "queued" | "preparing" | "downloading" | "processing" | "completed" | "error" | "cancelled";
   percent: number; // -1 = indeterminate, 0..100 = percentage
   statusText: string;
   result?: ExportResult;
@@ -103,7 +104,8 @@ function applyTheme(theme: string) {
 
 function updateThemeIcon() {
   const current = document.documentElement.getAttribute("data-theme");
-  const isDark = current === "dark" || (!current && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark =
+    current === "dark" || (!current && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const useEl = themeToggle.querySelector("use");
   if (useEl) {
     useEl.setAttribute("href", isDark ? "#icon-sun" : "#icon-moon");
@@ -112,7 +114,8 @@ function updateThemeIcon() {
 
 themeToggle.addEventListener("click", () => {
   const current = document.documentElement.getAttribute("data-theme");
-  const isDark = current === "dark" || (!current && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const isDark =
+    current === "dark" || (!current && window.matchMedia("(prefers-color-scheme: dark)").matches);
   const next = isDark ? "light" : "dark";
   applyTheme(next);
   localStorage.setItem("clipcut-theme", next);
@@ -137,7 +140,11 @@ function setupEventListeners() {
   });
   urlInput.addEventListener("input", () => {
     const val = urlInput.value.trim();
-    if (val.includes("youtube.com/watch") || val.includes("youtu.be/") || val.includes("youtube.com/shorts/")) {
+    if (
+      val.includes("youtube.com/watch") ||
+      val.includes("youtu.be/") ||
+      val.includes("youtube.com/shorts/")
+    ) {
       handleLoad();
     }
   });
@@ -157,7 +164,10 @@ function setupEventListeners() {
     e.preventDefault();
     urlSection.classList.remove("drag-over");
     const text = e.dataTransfer?.getData("text/plain") ?? "";
-    const lines = text.split("\n").map((l) => l.trim()).filter(Boolean);
+    const lines = text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
     const ytUrl = lines.find((l) => l.includes("youtu"));
     if (ytUrl) {
       urlInput.value = ytUrl;
@@ -255,7 +265,11 @@ function setupEventListeners() {
 
   clearQueueBtn.addEventListener("click", () => {
     jobQueue = jobQueue.filter(
-      (j) => j.status === "queued" || j.status === "preparing" || j.status === "downloading" || j.status === "processing"
+      (j) =>
+        j.status === "queued" ||
+        j.status === "preparing" ||
+        j.status === "downloading" ||
+        j.status === "processing"
     );
     renderQueue();
   });
@@ -291,7 +305,11 @@ async function handleLoad() {
   } catch (e: unknown) {
     const err = e as { code?: string; message?: string };
     const msg = err?.message ?? "";
-    if (err?.code === "CANCELLED" || msg.toLowerCase().includes("cancelled") || msg.toLowerCase().includes("superseded")) {
+    if (
+      err?.code === "CANCELLED" ||
+      msg.toLowerCase().includes("cancelled") ||
+      msg.toLowerCase().includes("superseded")
+    ) {
       setLoadingState(false);
       return;
     }
@@ -331,7 +349,11 @@ function hideVideoInfo() {
 // ── Clip Management ───────────────────────────────────────────────────────────
 
 function currentVideoDuration(): number {
-  if (appState.phase === "video_loaded" || appState.phase === "exporting" || appState.phase === "done") {
+  if (
+    appState.phase === "video_loaded" ||
+    appState.phase === "exporting" ||
+    appState.phase === "done"
+  ) {
     return appState.video.duration_seconds;
   }
   return Infinity;
@@ -400,14 +422,17 @@ function handleAddClip() {
     return;
   }
 
-  const newClip = validateClip({
-    id: String(Date.now() + Math.random()),
-    startRaw: formatTimestamp(startSeconds),
-    endRaw: formatTimestamp(endSeconds),
-    startSeconds,
-    endSeconds,
-    error: null,
-  }, dur);
+  const newClip = validateClip(
+    {
+      id: String(Date.now() + Math.random()),
+      startRaw: formatTimestamp(startSeconds),
+      endRaw: formatTimestamp(endSeconds),
+      startSeconds,
+      endSeconds,
+      error: null,
+    },
+    dur
+  );
 
   clips.push(newClip);
   addStartInput.value = "";
@@ -587,14 +612,17 @@ function getPendingClip(): ClipEntry | null {
   const dur = currentVideoDuration();
   if (endSeconds > dur + 1) return null;
 
-  return validateClip({
-    id: "clip-" + Date.now(),
-    startRaw: formatTimestamp(startSeconds),
-    endRaw: formatTimestamp(endSeconds),
-    startSeconds,
-    endSeconds,
-    error: null,
-  }, dur);
+  return validateClip(
+    {
+      id: "clip-" + Date.now(),
+      startRaw: formatTimestamp(startSeconds),
+      endRaw: formatTimestamp(endSeconds),
+      startSeconds,
+      endSeconds,
+      error: null,
+    },
+    dur
+  );
 }
 
 function updateExportButton() {
@@ -604,7 +632,9 @@ function updateExportButton() {
     return;
   }
 
-  const validExistingCount = clips.filter((c) => c.startSeconds !== null && c.endSeconds !== null && !c.error).length;
+  const validExistingCount = clips.filter(
+    (c) => c.startSeconds !== null && c.endSeconds !== null && !c.error
+  ).length;
   const pending = getPendingClip();
 
   if (validExistingCount > 0 && allClipsValid(clips)) {
@@ -634,8 +664,10 @@ async function handleChangeFolder() {
 function formatJobTitle(job: QueueJob): string {
   if (job.clips.length === 0) return "Clip";
   const first = job.clips[0];
-  const start = first.startRaw || (first.startSeconds !== null ? formatTimestamp(first.startSeconds) : "00:00");
-  const end = first.endRaw || (first.endSeconds !== null ? formatTimestamp(first.endSeconds) : "00:00");
+  const start =
+    first.startRaw || (first.startSeconds !== null ? formatTimestamp(first.startSeconds) : "00:00");
+  const end =
+    first.endRaw || (first.endSeconds !== null ? formatTimestamp(first.endSeconds) : "00:00");
   if (job.clips.length === 1) {
     return `${start} → ${end}`;
   }
@@ -668,7 +700,8 @@ function renderQueue() {
       const indeterminateClass = isIndeterminate ? "progress-fill--indeterminate" : "";
       const isCompleted = job.status === "completed";
       const isError = job.status === "error";
-      const isActive = job.status === "preparing" || job.status === "downloading" || job.status === "processing";
+      const isActive =
+        job.status === "preparing" || job.status === "downloading" || job.status === "processing";
       const isQueued = job.status === "queued";
 
       let statusBadge = escHtml(job.statusText);
@@ -773,7 +806,12 @@ async function handleCancelJob(jobId: string) {
 // ── Export ────────────────────────────────────────────────────────────────────
 
 async function handleExport() {
-  if (appState.phase !== "video_loaded" && appState.phase !== "exporting" && appState.phase !== "done") return;
+  if (
+    appState.phase !== "video_loaded" &&
+    appState.phase !== "exporting" &&
+    appState.phase !== "done"
+  )
+    return;
   const video = appState.video;
 
   // Auto-commit pending clip in inputs if valid
@@ -874,7 +912,12 @@ async function handleCancel() {
 // ── Preview ───────────────────────────────────────────────────────────────────
 
 function handlePreview() {
-  if (appState.phase !== "video_loaded" && appState.phase !== "exporting" && appState.phase !== "done") return;
+  if (
+    appState.phase !== "video_loaded" &&
+    appState.phase !== "exporting" &&
+    appState.phase !== "done"
+  )
+    return;
   const video = appState.video;
   invoke("open_directory", { path: video.url });
 }
@@ -964,5 +1007,9 @@ function clearUrlError() {
 // ── Utils ─────────────────────────────────────────────────────────────────────
 
 function escHtml(s: string): string {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }

@@ -64,8 +64,8 @@ pub fn sanitize_filename(name: &str) -> String {
     // Reject/replace Windows reserved device names (case-insensitive)
     let lower = truncated.to_lowercase();
     let reserved_names = [
-        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7",
-        "com8", "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
+        "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
+        "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
     ];
     if reserved_names.contains(&lower.as_str()) {
         format!("_{}", truncated)
@@ -78,7 +78,12 @@ pub fn sanitize_filename(name: &str) -> String {
 
 /// Build the output filename for a single clip.
 /// Format: `01_00-15_00-42.mp4`
-pub fn clip_filename(index: usize, start_seconds: f64, end_seconds: f64, extension: &str) -> String {
+pub fn clip_filename(
+    index: usize,
+    start_seconds: f64,
+    end_seconds: f64,
+    extension: &str,
+) -> String {
     format!(
         "{:02}_{}.{}",
         index + 1,
@@ -146,7 +151,10 @@ mod tests {
 
     #[test]
     fn sanitize_forbidden_chars() {
-        assert_eq!(sanitize_filename("a/b\\c:d*e?f\"g<h>i|j"), "a_b_c_d_e_f_g_h_i_j");
+        assert_eq!(
+            sanitize_filename("a/b\\c:d*e?f\"g<h>i|j"),
+            "a_b_c_d_e_f_g_h_i_j"
+        );
     }
 
     #[test]

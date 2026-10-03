@@ -85,8 +85,8 @@ pub async fn download_full(
         "-N",
         "4",
         "--no-playlist",
-        "--newline",          // One progress line per line
-        "--no-part",          // Don't write .part files (we manage atomicity ourselves)
+        "--newline", // One progress line per line
+        "--no-part", // Don't write .part files (we manage atomicity ourselves)
         "--js-runtimes",
         "node",
         "-o",
@@ -95,12 +95,9 @@ pub async fn download_full(
     ];
 
     let cmd = binaries::sidecar_command(app, "yt-dlp")?;
-    let (mut rx, child) = cmd
-        .args(&args)
-        .spawn()
-        .map_err(|e| AppError::ToolFailure {
-            detail: format!("Failed to spawn yt-dlp: {}", e),
-        })?;
+    let (mut rx, child) = cmd.args(&args).spawn().map_err(|e| AppError::ToolFailure {
+        detail: format!("Failed to spawn yt-dlp: {}", e),
+    })?;
 
     // Track PID for cancellation
     crate::cancel::set_ytdlp_pid(Some(child.pid())).await;
@@ -270,6 +267,7 @@ pub async fn download_sections(
 /// Download a single clip section directly to the target output path using yt-dlp.
 /// yt-dlp handles keyframes and ultrafast transcoding at cuts, producing a clean,
 /// frame-accurate cut in seconds without downloading the full source video.
+#[allow(clippy::too_many_arguments)]
 async fn execute_ytdlp_cut(
     app: &AppHandle,
     args: &[&str],
@@ -281,12 +279,9 @@ async fn execute_ytdlp_cut(
     clips_total: usize,
 ) -> Result<(), AppError> {
     let cmd = binaries::sidecar_command(app, "yt-dlp")?;
-    let (mut rx, child) = cmd
-        .args(args)
-        .spawn()
-        .map_err(|e| AppError::ToolFailure {
-            detail: format!("Failed to spawn yt-dlp: {}", e),
-        })?;
+    let (mut rx, child) = cmd.args(args).spawn().map_err(|e| AppError::ToolFailure {
+        detail: format!("Failed to spawn yt-dlp: {}", e),
+    })?;
 
     crate::cancel::set_ytdlp_pid(Some(child.pid())).await;
 
@@ -313,7 +308,8 @@ async fn execute_ytdlp_cut(
                 let text = String::from_utf8_lossy(&line).to_string();
                 tracing::debug!("[yt-dlp section stdout] {}", text.trim());
                 if let Some(pct) = progress::parse_ytdlp_percent(&text) {
-                    let overall = ((clip_index as f64 + (pct / 100.0)) / clips_total as f64) * 100.0;
+                    let overall =
+                        ((clip_index as f64 + (pct / 100.0)) / clips_total as f64) * 100.0;
                     progress::emit(
                         app,
                         ProgressEvent::Processing {
@@ -330,7 +326,8 @@ async fn execute_ytdlp_cut(
                 tracing::debug!("[yt-dlp section stderr] {}", text.trim());
                 if let Some(cur_sec) = progress::parse_time_seconds(&text) {
                     let clip_pct = ((cur_sec / duration) * 100.0).clamp(0.0, 100.0);
-                    let overall = ((clip_index as f64 + (clip_pct / 100.0)) / clips_total as f64) * 100.0;
+                    let overall =
+                        ((clip_index as f64 + (clip_pct / 100.0)) / clips_total as f64) * 100.0;
                     progress::emit(
                         app,
                         ProgressEvent::Processing {
@@ -386,6 +383,7 @@ async fn execute_ytdlp_cut(
 /// Download a single clip section directly to the target output path using yt-dlp.
 /// Reuses pre-fetched info.json to skip YouTube HTML and JS challenge handshakes,
 /// downloading and transcoding the cut in just a few seconds.
+#[allow(clippy::too_many_arguments)]
 pub async fn download_clip_section(
     app: &AppHandle,
     url: &str,
@@ -410,7 +408,9 @@ pub async fn download_clip_section(
 
     let info_json_path = paths::video_cache_directory(video_id).join("info.json");
     let has_info_json = info_json_path.exists()
-        && std::fs::metadata(&info_json_path).map(|m| m.len() > 0).unwrap_or(false);
+        && std::fs::metadata(&info_json_path)
+            .map(|m| m.len() > 0)
+            .unwrap_or(false);
     let info_json_str = info_json_path.to_string_lossy().to_string();
 
     // Fast path: reuse pre-fetched video metadata to eliminate network handshake
