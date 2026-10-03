@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 /// Progress event phases — structured, not stringly typed.
 #[derive(Debug, Clone, Serialize, Deserialize)]

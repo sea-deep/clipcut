@@ -91,10 +91,11 @@ pub async fn run_export(
 
     for (i, clip) in clips.iter().enumerate() {
         if crate::cancel::is_cancelled() {
+            let n = completed_files.len();
             progress::emit(
                 app,
                 ProgressEvent::Cancelled {
-                    clips_completed: completed_files.len(),
+                    clips_completed: n,
                     clips_total: clips.len(),
                 },
             );
@@ -102,7 +103,7 @@ pub async fn run_export(
                 files: completed_files,
                 output_directory: output_dir.to_string_lossy().to_string(),
                 cancelled: true,
-                clips_completed: completed_files.len(),
+                clips_completed: n,
                 clips_total: clips.len(),
             });
         }

@@ -1,7 +1,7 @@
 use std::sync::Mutex;
 
 use once_cell::sync::Lazy;
-use tauri::AppHandle;
+use tauri::{AppHandle, Emitter};
 
 use crate::{
     binaries,
