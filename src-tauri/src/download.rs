@@ -1,10 +1,10 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use tauri::AppHandle;
 
 use crate::{
     binaries,
-    clip::Clip,
+    clip::{Clip, OutputFormat},
     error::AppError,
     paths,
     progress::{self, ProgressEvent},
@@ -259,6 +259,148 @@ pub async fn download_sections(
     }
 
     Ok(paths)
+}
+
+/// Download a single clip section directly to the target output path using yt-dlp.
+/// yt-dlp handles keyframes and ultrafast transcoding at cuts, producing a clean,
+/// frame-accurate cut in seconds without downloading the full source video.
+pub async fn download_clip_section(
+    app: &AppHandle,
+    url: &str,
+    clip: &Clip,
+    output_path: &Path,
+    format: &OutputFormat,
+    clip_index: usize,
+    clips_total: usize,
+) -> Result<(), AppError> {
+    let output_str = output_path.to_string_lossy().to_string();
+    let part_path = output_path.with_extension(format!("{}.part", format.extension()));
+    let _ = std::fs::remove_file(output_path);
+    let _ = std::fs::remove_file(&part_path);
+
+    let section_arg = format!("*{:.3}-{:.3}", clip.start_seconds, clip.end_seconds);
+    let duration = (clip.end_seconds - clip.start_seconds).max(0.1);
+
+    let args: Vec<&str> = vec![
+        "-f",
+        "bv*[height<=1080][protocol^=http]+ba[protocol^=http]/b[height<=1080][protocol^=http]/best",
+        "--merge-output-format",
+        format.extension(),
+        "--force-keyframes-at-cuts",
+        "--downloader-args",
+        "ffmpeg:-preset ultrafast",
+        "--download-sections",
+        &section_arg,
+        "--no-playlist",
+        "--newline",
+        "--js-runtimes",
+        "node",
+        "-o",
+        &output_str,
+        url,
+    ];
+
+    let cmd = binaries::sidecar_command(app, "yt-dlp")?;
+    let (mut rx, child) = cmd
+        .args(&args)
+        .spawn()
+        .map_err(|e| AppError::ToolFailure {
+            detail: format!("Failed to spawn yt-dlp: {}", e),
+        })?;
+
+    crate::cancel::set_ytdlp_pid(Some(child.pid())).await;
+
+    let initial_overall = (clip_index as f64 / clips_total as f64) * 100.0;
+    progress::emit(
+        app,
+        ProgressEvent::Processing {
+            clip_index,
+            clips_total,
+            clip_percent: Some(0.0),
+            overall_percent: initial_overall,
+        },
+    );
+
+    let mut stderr_buf = String::new();
+
+    use tauri_plugin_shell::process::CommandEvent;
+    while let Some(event) = rx.recv().await {
+        if crate::cancel::is_cancelled() {
+            break;
+        }
+        match event {
+            CommandEvent::Stdout(line) => {
+                let text = String::from_utf8_lossy(&line).to_string();
+                tracing::debug!("[yt-dlp section stdout] {}", text.trim());
+                if let Some(pct) = progress::parse_ytdlp_percent(&text) {
+                    let overall = ((clip_index as f64 + (pct / 100.0)) / clips_total as f64) * 100.0;
+                    progress::emit(
+                        app,
+                        ProgressEvent::Processing {
+                            clip_index,
+                            clips_total,
+                            clip_percent: Some(pct),
+                            overall_percent: overall.min(100.0),
+                        },
+                    );
+                }
+            }
+            CommandEvent::Stderr(line) => {
+                let text = String::from_utf8_lossy(&line).to_string();
+                tracing::debug!("[yt-dlp section stderr] {}", text.trim());
+                if let Some(cur_sec) = progress::parse_time_seconds(&text) {
+                    let clip_pct = ((cur_sec / duration) * 100.0).clamp(0.0, 100.0);
+                    let overall = ((clip_index as f64 + (clip_pct / 100.0)) / clips_total as f64) * 100.0;
+                    progress::emit(
+                        app,
+                        ProgressEvent::Processing {
+                            clip_index,
+                            clips_total,
+                            clip_percent: Some(clip_pct),
+                            overall_percent: overall.min(100.0),
+                        },
+                    );
+                }
+                stderr_buf.push_str(&text);
+            }
+            CommandEvent::Terminated(status) => {
+                crate::cancel::set_ytdlp_pid(None).await;
+                if crate::cancel::is_cancelled() {
+                    let _ = std::fs::remove_file(output_path);
+                    let _ = std::fs::remove_file(&part_path);
+                    return Err(AppError::Cancelled);
+                }
+                if !status.code.map(|c| c == 0).unwrap_or(false) {
+                    let _ = std::fs::remove_file(output_path);
+                    let _ = std::fs::remove_file(&part_path);
+                    return Err(AppError::from_ytdlp_stderr(&stderr_buf));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    crate::cancel::set_ytdlp_pid(None).await;
+
+    if crate::cancel::is_cancelled() {
+        let _ = std::fs::remove_file(output_path);
+        let _ = std::fs::remove_file(&part_path);
+        return Err(AppError::Cancelled);
+    }
+
+    // Verify output file exists and is not empty
+    if !output_path.exists() || std::fs::metadata(output_path)?.len() == 0 {
+        let _ = std::fs::remove_file(output_path);
+        let _ = std::fs::remove_file(&part_path);
+        return Err(AppError::ToolFailure {
+            detail: format!(
+                "yt-dlp section extraction completed but output file is missing or empty: {}",
+                output_str
+            ),
+        });
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]

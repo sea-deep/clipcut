@@ -851,6 +851,23 @@ body {
   transition: width var(--anim-normal) ease;
 }
 
+.adw-progress-fill.progress-fill--indeterminate {
+  width: 40% !important;
+  animation: adw-progress-indeterminate 1.4s ease-in-out infinite;
+}
+
+@keyframes adw-progress-indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(120%);
+  }
+  100% {
+    transform: translateX(300%);
+  }
+}
+
 .progress-meta {
   display: flex;
   align-items: center;

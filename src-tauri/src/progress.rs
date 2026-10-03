@@ -58,6 +58,22 @@ pub fn parse_ffmpeg_time_us(line: &str) -> Option<i64> {
     }
 }
 
+/// Parse time duration in seconds from lines like:
+/// `frame=   85 fps= 28 q=24.0 size= 3840KiB time=00:00:03.54 bitrate=...`
+pub fn parse_time_seconds(line: &str) -> Option<f64> {
+    if !line.contains("time=") {
+        return None;
+    }
+    static RE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(r"time=(\d+):(\d+):(\d+(?:\.\d+)?)").expect("valid regex")
+    });
+    let caps = RE.captures(line)?;
+    let h: f64 = caps.get(1)?.as_str().parse().ok()?;
+    let m: f64 = caps.get(2)?.as_str().parse().ok()?;
+    let s: f64 = caps.get(3)?.as_str().parse().ok()?;
+    Some(h * 3600.0 + m * 60.0 + s)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -90,5 +106,19 @@ mod tests {
     fn parse_ffmpeg_other_line() {
         let line = "frame=120";
         assert!(parse_ffmpeg_time_us(line).is_none());
+    }
+
+    #[test]
+    fn parse_time_seconds_normal() {
+        let line = "frame=   85 fps= 28 q=24.0 size=    3840KiB time=00:00:03.54 bitrate=8883.0kbits/s speed=1.18x";
+        let sec = parse_time_seconds(line).unwrap();
+        assert!((sec - 3.54).abs() < 0.01);
+    }
+
+    #[test]
+    fn parse_time_seconds_minutes() {
+        let line = "frame=  100 time=00:02:15.50";
+        let sec = parse_time_seconds(line).unwrap();
+        assert!((sec - 135.5).abs() < 0.01);
     }
 }

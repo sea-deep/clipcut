@@ -51,81 +51,107 @@ pub async fn run_export(
 
     progress::emit(app, ProgressEvent::Preparing);
 
-    // --- 5. Download ---
-    let source_path = match strategy {
-        DownloadStrategy::Full => {
-            progress::emit(
-                app,
-                ProgressEvent::Downloading {
-                    percent: None,
-                    speed: None,
-                    eta: None,
-                },
-            );
-            download::download_full(app, &video.url, &video.id).await?
-        }
-        DownloadStrategy::Partial => {
-            // For partial: yt-dlp produces separate section files, then we clip from those.
-            // Treat partial download as also producing a single usable source per clip.
-            // Simpler: fall back to full for now if partial produces messy filenames.
-            // TODO: implement true partial flow once tested.
-            // See docs/DECISIONS.md — partial download selected but full used as safe fallback.
-            progress::emit(
-                app,
-                ProgressEvent::Downloading {
-                    percent: None,
-                    speed: None,
-                    eta: None,
-                },
-            );
-            download::download_full(app, &video.url, &video.id).await?
-        }
-    };
-
-    if crate::cancel::is_cancelled() {
-        return Err(AppError::Cancelled);
-    }
-
-    // --- 6. Extract clips ---
     let mut completed_files: Vec<String> = Vec::new();
 
-    for (i, clip) in clips.iter().enumerate() {
-        if crate::cancel::is_cancelled() {
-            let n = completed_files.len();
-            progress::emit(
-                app,
-                ProgressEvent::Cancelled {
-                    clips_completed: n,
-                    clips_total: clips.len(),
-                },
-            );
-            return Ok(ExportResult {
-                files: completed_files,
-                output_directory: output_dir.to_string_lossy().to_string(),
-                cancelled: true,
-                clips_completed: n,
-                clips_total: clips.len(),
-            });
+    match strategy {
+        DownloadStrategy::Partial => {
+            // Direct fast section download for each clip:
+            // yt-dlp only downloads the exact bytes needed, transcodes cuts with ultrafast preset,
+            // and saves directly into the target clip filename.
+            for (i, clip) in clips.iter().enumerate() {
+                if crate::cancel::is_cancelled() {
+                    let n = completed_files.len();
+                    progress::emit(
+                        app,
+                        ProgressEvent::Cancelled {
+                            clips_completed: n,
+                            clips_total: clips.len(),
+                        },
+                    );
+                    return Ok(ExportResult {
+                        files: completed_files,
+                        output_directory: output_dir.to_string_lossy().to_string(),
+                        cancelled: true,
+                        clips_completed: n,
+                        clips_total: clips.len(),
+                    });
+                }
+
+                let filename = paths::clip_filename(i, clip.start_seconds, clip.end_seconds, options.format.extension());
+                let final_path = paths::resolve_output_path(&output_dir, &filename);
+
+                download::download_clip_section(
+                    app,
+                    &video.url,
+                    clip,
+                    &final_path,
+                    &options.format,
+                    i,
+                    clips.len(),
+                )
+                .await?;
+
+                completed_files.push(final_path.to_string_lossy().to_string());
+            }
         }
+        DownloadStrategy::Full => {
+            let source_path = if cached_full {
+                cached_source
+            } else {
+                progress::emit(
+                    app,
+                    ProgressEvent::Downloading {
+                        percent: None,
+                        speed: None,
+                        eta: None,
+                    },
+                );
+                download::download_full(app, &video.url, &video.id).await?
+            };
 
-        let filename = paths::clip_filename(i, clip.start_seconds, clip.end_seconds, options.format.extension());
-        let final_path = paths::resolve_output_path(&output_dir, &filename);
-        let part_path = final_path.with_extension(format!("{}.part", options.format.extension()));
+            if crate::cancel::is_cancelled() {
+                return Err(AppError::Cancelled);
+            }
 
-        ffmpeg::extract_clip(
-            app,
-            &source_path,
-            clip,
-            &part_path,
-            &final_path,
-            &options.format,
-            &options.mode,
-            i,
-            clips.len(),
-        )
-        .await?;
+            for (i, clip) in clips.iter().enumerate() {
+                if crate::cancel::is_cancelled() {
+                    let n = completed_files.len();
+                    progress::emit(
+                        app,
+                        ProgressEvent::Cancelled {
+                            clips_completed: n,
+                            clips_total: clips.len(),
+                        },
+                    );
+                    return Ok(ExportResult {
+                        files: completed_files,
+                        output_directory: output_dir.to_string_lossy().to_string(),
+                        cancelled: true,
+                        clips_completed: n,
+                        clips_total: clips.len(),
+                    });
+                }
 
-        completed_files.push(final_path.to_string_lossy().to_string());
+                let filename = paths::clip_filename(i, clip.start_seconds, clip.end_seconds, options.format.extension());
+                let final_path = paths::resolve_output_path(&output_dir, &filename);
+                let part_path = final_path.with_extension(format!("{}.part", options.format.extension()));
+
+                ffmpeg::extract_clip(
+                    app,
+                    &source_path,
+                    clip,
+                    &part_path,
+                    &final_path,
+                    &options.format,
+                    &options.mode,
+                    i,
+                    clips.len(),
+                )
+                .await?;
+
+                completed_files.push(final_path.to_string_lossy().to_string());
+            }
+        }
     }
 
     progress::emit(app, ProgressEvent::Finalizing);

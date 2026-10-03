@@ -685,10 +685,11 @@ function setupProgressListener() {
         break;
       }
       case "processing": {
-        const ci = payload["clip_index"] as number;
-        const ct = payload["clips_total"] as number;
-        const overall = payload["overall_percent"] as number;
-        setProgressPhase(`Processing clips`, Math.round(overall));
+        const ci = ((payload["clip_index"] as number) ?? 0) + 1;
+        const ct = (payload["clips_total"] as number) ?? 1;
+        const overall = (payload["overall_percent"] as number) ?? 0;
+        const label = ct > 1 ? `Exporting clip ${ci} of ${ct}…` : "Exporting clip…";
+        setProgressPhase(label, Math.round(overall));
         progressClips.textContent = `${ci} of ${ct}`;
         break;
       }
