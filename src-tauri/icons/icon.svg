@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <defs>
+    <!-- Background squircle gradient (GNOME style) -->
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#3584e4"/>
+      <stop offset="100%" stop-color="#1c71d8"/>
+    </linearGradient>
+
+    <!-- Top highlight for 3D depth -->
+    <linearGradient id="topHighlight" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Blade gradient -->
+    <linearGradient id="bladeGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#d5dbe5"/>
+    </linearGradient>
+
+    <linearGradient id="bladeGradDark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f6f8fa"/>
+      <stop offset="100%" stop-color="#b0b8c5"/>
+    </linearGradient>
+
+    <!-- Film strip tape -->
+    <linearGradient id="filmGrad" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#e01b24"/>
+      <stop offset="100%" stop-color="#ff7800"/>
+    </linearGradient>
+
+    <!-- Drop shadow -->
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="125%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+
+    <filter id="cutShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- Base App Shape (squircle / rounded squircle) -->
+  <rect x="8" y="8" width="112" height="112" rx="28" fill="url(#bgGrad)" filter="url(#shadow)"/>
+  
+  <!-- Subtle inner border & top highlight -->
+  <rect x="8.5" y="8.5" width="111" height="111" rx="27.5" fill="none" stroke="url(#topHighlight)" stroke-width="1.5"/>
+
+  <!-- Film ribbon being cut in the background -->
+  <g opacity="0.3" filter="url(#cutShadow)">
+    <path d="M 12 64 Q 64 56 116 64" fill="none" stroke="#ffffff" stroke-width="22" stroke-linecap="round"/>
+    <!-- Film sprocket holes -->
+    <rect x="22" y="56" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="34" y="56" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="46" y="56" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="78" y="56" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="90" y="56" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="102" y="56" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+
+    <rect x="22" y="67" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="34" y="67" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="46" y="67" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="78" y="67" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="90" y="67" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+    <rect x="102" y="67" width="5" height="5" rx="1.5" fill="#1c71d8"/>
+  </g>
+
+  <!-- Precision Cut line -->
+  <line x1="64" y1="44" x2="64" y2="84" stroke="#ffffff" stroke-dasharray="3 3" stroke-width="2" opacity="0.6"/>
+
+  <!-- Scissors Icon Elements (Layered for depth) -->
+  <g filter="url(#cutShadow)">
+    <!-- Lower blade & handle -->
+    <g>
+      <!-- Handle loop bottom-left -->
+      <circle cx="38" cy="86" r="14" fill="none" stroke="url(#bladeGrad)" stroke-width="5.5"/>
+      <!-- Blade shaft extending to top-right -->
+      <path d="M 47 77 L 88 42 C 92 39 96 42 93 46 L 68 68 Z" fill="url(#bladeGrad)"/>
+    </g>
+
+    <!-- Upper blade & handle -->
+    <g>
+      <!-- Handle loop top-left -->
+      <circle cx="38" cy="42" r="14" fill="none" stroke="url(#bladeGradDark)" stroke-width="5.5"/>
+      <!-- Blade shaft extending to bottom-right -->
+      <path d="M 47 51 L 88 86 C 92 89 96 86 93 82 L 68 60 Z" fill="url(#bladeGradDark)"/>
+    </g>
+
+    <!-- Center Pivot screw -->
+    <circle cx="62" cy="64" r="5" fill="#1c71d8"/>
+    <circle cx="62" cy="64" r="3" fill="#ffffff"/>
+  </g>
+</svg>

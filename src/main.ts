@@ -90,12 +90,17 @@ function applyTheme(theme: string) {
 
 function updateThemeIcon() {
   const current = document.documentElement.getAttribute("data-theme");
-  themeToggle.querySelector(".theme-icon")!.textContent = current === "dark" ? "☀" : "🌙";
+  const isDark = current === "dark" || (!current && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const useEl = themeToggle.querySelector("use");
+  if (useEl) {
+    useEl.setAttribute("href", isDark ? "#icon-sun" : "#icon-moon");
+  }
 }
 
 themeToggle.addEventListener("click", () => {
   const current = document.documentElement.getAttribute("data-theme");
-  const next = current === "dark" ? "light" : "dark";
+  const isDark = current === "dark" || (!current && window.matchMedia("(prefers-color-scheme: dark)").matches);
+  const next = isDark ? "light" : "dark";
   applyTheme(next);
   localStorage.setItem("clipcut-theme", next);
   updateThemeIcon();
@@ -176,6 +181,22 @@ function setupEventListeners() {
 
   // Preview
   previewBtn.addEventListener("click", handlePreview);
+
+  // Segmented mode control
+  const segmentedItems = document.querySelectorAll<HTMLButtonElement>(".segmented-item");
+  segmentedItems.forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const mode = btn.dataset.mode;
+      if (!mode) return;
+      segmentedItems.forEach((b) => {
+        const isActive = b === btn;
+        b.classList.toggle("active", isActive);
+        b.setAttribute("aria-checked", isActive ? "true" : "false");
+      });
+      const radio = document.querySelector<HTMLInputElement>(`input[name="mode"][value="${mode}"]`);
+      if (radio) radio.checked = true;
+    });
+  });
 }
 
 // ── Load Video ────────────────────────────────────────────────────────────────
@@ -315,22 +336,28 @@ function renderClips() {
     row.dataset.id = clip.id;
 
     row.innerHTML = `
-      <input
-        type="text"
-        class="input clip-start${clip.error && clip.startRaw ? " input--error" : ""}"
-        value="${escHtml(clip.startRaw)}"
-        placeholder="0:15"
-        aria-label="Start time"
-      />
-      <span class="clip-arrow" aria-hidden="true">→</span>
-      <input
-        type="text"
-        class="input clip-end${clip.error ? " input--error" : ""}"
-        value="${escHtml(clip.endRaw)}"
-        placeholder="0:42"
-        aria-label="End time"
-      />
-      <button class="btn btn--ghost btn--icon clip-remove" aria-label="Remove clip" title="Remove">×</button>
+      <div class="clip-time-group">
+        <input
+          type="text"
+          class="adw-input clip-start${clip.error && clip.startRaw ? " input--error" : ""}"
+          value="${escHtml(clip.startRaw)}"
+          placeholder="0:15"
+          aria-label="Start time"
+        />
+        <span class="clip-arrow" aria-hidden="true">
+          <svg class="icon icon-sm"><use href="#icon-arrow-right"/></svg>
+        </span>
+        <input
+          type="text"
+          class="adw-input clip-end${clip.error ? " input--error" : ""}"
+          value="${escHtml(clip.endRaw)}"
+          placeholder="0:42"
+          aria-label="End time"
+        />
+      </div>
+      <button class="btn-icon btn-icon--danger clip-remove" aria-label="Remove clip" title="Remove">
+        <svg class="icon"><use href="#icon-trash"/></svg>
+      </button>
       ${clip.error ? `<p class="clip-row-error" role="alert">${escHtml(clip.error)}</p>` : ""}
     `;
 
@@ -437,9 +464,9 @@ async function handleExport() {
     hideProgressOverlay();
 
     if (result.cancelled) {
-      doneMessage.textContent = `Cancelled — ${result.clips_completed} of ${result.clips_total} clips saved.`;
+      doneMessage.textContent = `Export cancelled (${result.clips_completed} of ${result.clips_total} clips saved)`;
     } else {
-      doneMessage.textContent = `✓ ${result.clips_completed} clip${result.clips_completed !== 1 ? "s" : ""} exported.`;
+      doneMessage.textContent = `${result.clips_completed} clip${result.clips_completed !== 1 ? "s" : ""} exported successfully`;
     }
     showDoneOverlay();
     appState = { phase: "done", video, result };

@@ -5,6 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ClipCut</title>
     <link rel="stylesheet" href="/styles/main.css" />
+
+    <!-- Libadwaita / Modern Desktop SVG Icon Library -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="display: none">
+      <!-- App Brand Logo (Scissors & Film) -->
+      <symbol id="icon-brand" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6" cy="6" r="3"/>
+        <circle cx="6" cy="18" r="3"/>
+        <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+        <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+        <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+      </symbol>
+
+      <!-- Weather Clear / Sun (Adwaita light theme) -->
+      <symbol id="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+      </symbol>
+
+      <!-- Weather Clear Night / Moon (Adwaita dark theme) -->
+      <symbol id="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>
+      </symbol>
+
+      <!-- Link / URL icon -->
+      <symbol id="icon-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+        <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+      </symbol>
+
+      <!-- Go Next / Arrow Right -->
+      <symbol id="icon-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14M12 5l7 7-7 7"/>
+      </symbol>
+
+      <!-- Trash / Delete (Adwaita user-trash-symbolic) -->
+      <symbol id="icon-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 6h18M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>
+        <line x1="10" y1="11" x2="10" y2="17"/>
+        <line x1="14" y1="11" x2="14" y2="17"/>
+      </symbol>
+
+      <!-- Plus / Add (Adwaita list-add-symbolic) -->
+      <symbol id="icon-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 12h14M12 5v14"/>
+      </symbol>
+
+      <!-- Folder (Adwaita folder-symbolic) -->
+      <symbol id="icon-folder" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/>
+      </symbol>
+
+      <!-- Play (Adwaita media-playback-start-symbolic) -->
+      <symbol id="icon-play" viewBox="0 0 24 24" fill="currentColor">
+        <polygon points="6 3 20 12 6 21 6 3"/>
+      </symbol>
+
+      <!-- Check / Complete (Adwaita object-select-symbolic) -->
+      <symbol id="icon-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"/>
+      </symbol>
+
+      <!-- Scissors / Cut (Export action) -->
+      <symbol id="icon-cut" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6" cy="6" r="3"/>
+        <circle cx="6" cy="18" r="3"/>
+        <line x1="20" y1="4" x2="8.12" y2="15.88"/>
+        <line x1="14.47" y1="14.48" x2="20" y2="20"/>
+        <line x1="8.12" y1="8.12" x2="12" y2="12"/>
+      </symbol>
+
+      <!-- Chevron Down -->
+      <symbol id="icon-chevron-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m6 9 6 6 6-6"/>
+      </symbol>
+
+      <!-- External Link -->
+      <symbol id="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+      </symbol>
+    </svg>
   </head>
   <body>
     <div id="app">
@@ -13,139 +93,171 @@
         <span id="sidecar-error-msg">ClipCut could not start its video tools. Try reinstalling ClipCut.</span>
       </div>
 
+      <!-- Libadwaita style HeaderBar -->
       <header class="app-header">
-        <h1 class="app-title">ClipCut</h1>
-        <button id="theme-toggle" class="btn btn--icon" aria-label="Toggle theme" title="Toggle theme">
-          <span class="theme-icon">☀</span>
+        <div class="header-branding">
+          <img src="/assets/logo.svg" class="app-logo" alt="ClipCut" />
+          <div class="header-title-group">
+            <h1 class="app-title">ClipCut</h1>
+            <span class="app-subtitle">Video Clip Extractor</span>
+          </div>
+        </div>
+        <button id="theme-toggle" class="btn-icon" aria-label="Toggle theme" title="Toggle theme">
+          <svg class="icon icon-theme"><use href="#icon-sun"/></svg>
         </button>
       </header>
 
       <main class="app-main">
         <!-- URL Section -->
         <section class="section" id="url-section">
-          <label class="label" for="url-input">YouTube URL</label>
-          <div class="url-row">
+          <label class="section-label" for="url-input">YouTube URL</label>
+          <div class="url-input-container">
+            <svg class="icon icon-prefix"><use href="#icon-link"/></svg>
             <input
               id="url-input"
               type="text"
-              class="input"
+              class="adw-input"
               placeholder="https://youtube.com/watch?v=..."
               autocomplete="off"
               spellcheck="false"
             />
-            <button id="load-btn" class="btn btn--primary">Load</button>
+            <button id="load-btn" class="btn btn--primary">
+              <span>Load</span>
+            </button>
           </div>
           <p id="url-error" class="field-error hidden" role="alert"></p>
         </section>
 
-        <!-- Video Info — hidden until loaded -->
-        <section id="video-info" class="section section--video hidden">
+        <!-- Video Info Card — hidden until loaded -->
+        <section id="video-info" class="adw-card section--video hidden">
           <div class="video-meta">
-            <a id="thumbnail-link" href="#" target="_blank" rel="noopener">
+            <div class="thumbnail-wrapper">
               <img id="thumbnail" class="thumbnail" src="" alt="Video thumbnail" />
-            </a>
+              <button id="preview-btn" class="thumbnail-play-overlay" title="Open video in browser">
+                <svg class="icon"><use href="#icon-play"/></svg>
+              </button>
+            </div>
             <div class="video-details">
               <p id="video-title" class="video-title"></p>
-              <p id="video-duration" class="video-duration text-muted"></p>
-              <button id="preview-btn" class="btn btn--ghost btn--sm">▶ Preview</button>
+              <div class="video-badges">
+                <span class="badge badge--duration" id="video-duration">00:00</span>
+                <a id="thumbnail-link" href="#" target="_blank" rel="noopener" class="badge badge--link">
+                  <span>YouTube</span>
+                  <svg class="icon icon-sm"><use href="#icon-external"/></svg>
+                </a>
+              </div>
             </div>
           </div>
         </section>
 
         <!-- Clips Section -->
         <section class="section" id="clips-section">
-          <label class="label">Clips</label>
+          <div class="section-header-row">
+            <label class="section-label">Clips</label>
+            <span class="clips-hint text-muted">Format: 0:15 or 1:02:15</span>
+          </div>
+
           <div id="clips-list" class="clips-list" role="list"></div>
 
-          <div class="clip-add-row">
+          <div class="clip-add-container">
             <input
               id="range-input"
               type="text"
-              class="input input--range"
-              placeholder="Paste: 0:15-0:42 or multiple ranges..."
+              class="adw-input adw-input--mono"
+              placeholder="Paste ranges (e.g. 0:15-0:42, 2:10-2:35)..."
               autocomplete="off"
             />
-            <button id="add-clip-btn" class="btn btn--secondary">+ Add Clip</button>
+            <button id="add-clip-btn" class="btn btn--secondary">
+              <svg class="icon icon-sm"><use href="#icon-plus"/></svg>
+              <span>Add Clip</span>
+            </button>
           </div>
           <p id="clip-error" class="field-error hidden" role="alert"></p>
         </section>
 
-        <!-- Output Section -->
+        <!-- Output Destination Card -->
         <section class="section" id="output-section">
-          <div class="output-row">
-            <div class="output-path-group">
-              <label class="label" for="output-path">Output</label>
-              <span id="output-path" class="output-path text-muted" title=""></span>
+          <label class="section-label">Output</label>
+          <div class="adw-card output-card">
+            <div class="output-destination">
+              <svg class="icon icon-folder-prefix"><use href="#icon-folder"/></svg>
+              <span id="output-path" class="output-path" title="">~/Videos/ClipCut</span>
             </div>
-            <div class="output-controls">
-              <select id="format-select" class="select" aria-label="Output format">
-                <option value="mp4">MP4</option>
-                <option value="webm">WebM</option>
-                <option value="mkv">MKV</option>
-              </select>
-              <button id="change-folder-btn" class="btn btn--ghost btn--sm">Change</button>
+            <div class="output-actions">
+              <div class="select-wrapper">
+                <select id="format-select" class="adw-select" aria-label="Output format">
+                  <option value="mp4">MP4</option>
+                  <option value="webm">WebM</option>
+                  <option value="mkv">MKV</option>
+                </select>
+                <svg class="icon icon-select-arrow"><use href="#icon-chevron-down"/></svg>
+              </div>
+              <button id="change-folder-btn" class="btn btn--flat btn--sm">Change</button>
             </div>
           </div>
         </section>
 
-        <!-- Mode Section -->
+        <!-- Cut Mode Segmented Control (Libadwaita style) -->
         <section class="section section--mode">
-          <div class="mode-group" role="radiogroup" aria-label="Cut mode">
-            <label class="mode-option">
-              <input type="radio" name="mode" value="accurate" checked />
-              <span class="mode-label">
-                <strong>Accurate</strong>
-                <span class="mode-desc text-muted">Exact cuts. Recommended.</span>
-              </span>
-            </label>
-            <label class="mode-option">
-              <input type="radio" name="mode" value="fast" />
-              <span class="mode-label">
-                <strong>Fast</strong>
-                <span class="mode-desc text-muted">Much faster, but cuts may begin near a keyframe.</span>
-              </span>
-            </label>
+          <div class="mode-control-header">
+            <label class="section-label">Cut Mode</label>
           </div>
+          <div class="adw-segmented-button" role="radiogroup" aria-label="Cut mode">
+            <button type="button" class="segmented-item active" data-mode="accurate" role="radio" aria-checked="true">
+              <span class="mode-title">Accurate</span>
+              <span class="mode-desc">Exact frame cuts (re-encoded)</span>
+            </button>
+            <button type="button" class="segmented-item" data-mode="fast" role="radio" aria-checked="false">
+              <span class="mode-title">Fast</span>
+              <span class="mode-desc">Instant stream copy (keyframe)</span>
+            </button>
+          </div>
+          <!-- Hidden radio inputs for compatibility with existing state logic -->
+          <input type="radio" name="mode" value="accurate" checked style="display:none" />
+          <input type="radio" name="mode" value="fast" style="display:none" />
         </section>
 
-        <!-- Export Button -->
+        <!-- Export Action Row -->
         <div class="export-row">
-          <button id="export-btn" class="btn btn--primary btn--export" disabled>
-            Export <span id="export-count">0</span> Clips
+          <button id="export-btn" class="btn btn--suggested" disabled>
+            <svg class="icon"><use href="#icon-cut"/></svg>
+            <span>Export <span id="export-count">0</span> Clips</span>
           </button>
         </div>
-
-        <!-- Batch Queue — visible when more than one video is queued -->
-        <section id="queue-section" class="section section--queue hidden">
-          <label class="label">Queue</label>
-          <div id="queue-list" class="queue-list"></div>
-        </section>
       </main>
     </div>
 
-    <!-- Progress Overlay -->
+    <!-- Progress Dialog / Sheet Overlay -->
     <div id="progress-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Export progress">
-      <div class="overlay-card">
-        <p id="progress-phase" class="progress-phase"></p>
-        <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
-          <div id="progress-fill" class="progress-fill"></div>
+      <div class="overlay-dialog">
+        <h3 id="progress-phase" class="dialog-title">Preparing Export…</h3>
+        <div class="progress-bar-container">
+          <div class="adw-progress-track">
+            <div id="progress-fill" class="adw-progress-fill" style="width: 0%"></div>
+          </div>
         </div>
-        <div class="progress-detail">
+        <div class="progress-meta">
           <span id="progress-percent" class="progress-percent">0%</span>
           <span id="progress-clips" class="text-muted"></span>
         </div>
-        <button id="cancel-btn" class="btn btn--ghost btn--sm">Cancel</button>
+        <button id="cancel-btn" class="btn btn--secondary btn--sm">Cancel</button>
       </div>
     </div>
 
-    <!-- Done Overlay -->
+    <!-- Done Dialog Overlay -->
     <div id="done-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Export complete">
-      <div class="overlay-card overlay-card--done">
-        <p class="done-check">✓</p>
-        <p id="done-message" class="done-message"></p>
-        <div class="done-actions">
-          <button id="open-folder-btn" class="btn btn--primary">Open Folder</button>
-          <button id="done-close-btn" class="btn btn--ghost">Close</button>
+      <div class="overlay-dialog overlay-dialog--done">
+        <div class="done-icon-circle">
+          <svg class="icon"><use href="#icon-check"/></svg>
+        </div>
+        <h3 id="done-message" class="dialog-title">Clips Exported Successfully</h3>
+        <p class="dialog-desc text-muted">Clips have been saved to your output folder.</p>
+        <div class="dialog-actions">
+          <button id="open-folder-btn" class="btn btn--primary">
+            <svg class="icon icon-sm"><use href="#icon-folder"/></svg>
+            <span>Open Folder</span>
+          </button>
+          <button id="done-close-btn" class="btn btn--secondary">Done</button>
         </div>
       </div>
     </div>

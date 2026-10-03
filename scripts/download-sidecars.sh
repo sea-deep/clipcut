@@ -11,7 +11,7 @@ set -euo pipefail
 
 # ── Pinned versions ───────────────────────────────────────────────────────────
 # Update these when shipping a new ClipCut release that bundles newer tools.
-YT_DLP_VERSION="2024.11.18"
+YT_DLP_VERSION="2026.08.19"
 FFMPEG_VERSION="7.1"
 
 # ── Target detection ──────────────────────────────────────────────────────────
