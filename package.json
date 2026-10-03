@@ -1,0 +1,33 @@
+{
+  "name": "clipcut",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "tauri": "tauri",
+    "check": "npm run check:ts && npm run check:fmt && npm run check:rust",
+    "check:ts": "tsc --noEmit",
+    "check:fmt": "prettier --check \"src/**/*.{ts,html,css}\"",
+    "check:rust": "cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings",
+    "fmt": "prettier --write \"src/**/*.{ts,html,css}\" && cd src-tauri && cargo fmt",
+    "test": "npm run test:ts && npm run test:rust",
+    "test:ts": "vitest run",
+    "test:rust": "cd src-tauri && cargo test"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2",
+    "@tauri-apps/plugin-dialog": "^2",
+    "@tauri-apps/plugin-opener": "^2",
+    "@tauri-apps/plugin-shell": "^2"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2",
+    "prettier": "^3",
+    "typescript": "^5",
+    "vite": "^5",
+    "vitest": "^2"
+  }
+}

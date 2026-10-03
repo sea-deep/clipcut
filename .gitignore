@@ -1,0 +1,25 @@
+# Node
+node_modules/
+dist/
+
+# Vite
+.vite/
+
+# Rust / Cargo
+src-tauri/target/
+
+# Tauri
+src-tauri/binaries/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log

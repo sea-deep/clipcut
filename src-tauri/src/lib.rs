@@ -1,0 +1,39 @@
+pub mod binaries;
+pub mod cancel;
+pub mod clip;
+pub mod commands;
+pub mod download;
+pub mod error;
+pub mod export;
+pub mod ffmpeg;
+pub mod paths;
+pub mod progress;
+
+use tauri::Manager;
+
+#[cfg_attr(mobile, tauri::mobile_entry_point)]
+pub fn run() {
+    tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_log::Builder::default().build())
+        .invoke_handler(tauri::generate_handler![
+            commands::load_video,
+            commands::export_clips,
+            commands::cancel_export,
+            commands::get_default_output_dir,
+            commands::open_directory,
+            commands::check_sidecars,
+        ])
+        .setup(|app| {
+            let handle = app.handle().clone();
+            // Non-blocking sidecar health check on launch
+            tauri::async_runtime::spawn(async move {
+                let _ = commands::check_sidecars(handle).await;
+            });
+            Ok(())
+        })
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}

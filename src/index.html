@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ClipCut</title>
+    <link rel="stylesheet" href="/styles/main.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Sidecar error banner — hidden by default -->
+      <div id="sidecar-error" class="banner banner--error hidden" role="alert">
+        <span id="sidecar-error-msg">ClipCut could not start its video tools. Try reinstalling ClipCut.</span>
+      </div>
+
+      <header class="app-header">
+        <h1 class="app-title">ClipCut</h1>
+        <button id="theme-toggle" class="btn btn--icon" aria-label="Toggle theme" title="Toggle theme">
+          <span class="theme-icon">☀</span>
+        </button>
+      </header>
+
+      <main class="app-main">
+        <!-- URL Section -->
+        <section class="section" id="url-section">
+          <label class="label" for="url-input">YouTube URL</label>
+          <div class="url-row">
+            <input
+              id="url-input"
+              type="text"
+              class="input"
+              placeholder="https://youtube.com/watch?v=..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <button id="load-btn" class="btn btn--primary">Load</button>
+          </div>
+          <p id="url-error" class="field-error hidden" role="alert"></p>
+        </section>
+
+        <!-- Video Info — hidden until loaded -->
+        <section id="video-info" class="section section--video hidden">
+          <div class="video-meta">
+            <a id="thumbnail-link" href="#" target="_blank" rel="noopener">
+              <img id="thumbnail" class="thumbnail" src="" alt="Video thumbnail" />
+            </a>
+            <div class="video-details">
+              <p id="video-title" class="video-title"></p>
+              <p id="video-duration" class="video-duration text-muted"></p>
+              <button id="preview-btn" class="btn btn--ghost btn--sm">▶ Preview</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Clips Section -->
+        <section class="section" id="clips-section">
+          <label class="label">Clips</label>
+          <div id="clips-list" class="clips-list" role="list"></div>
+
+          <div class="clip-add-row">
+            <input
+              id="range-input"
+              type="text"
+              class="input input--range"
+              placeholder="Paste: 0:15-0:42 or multiple ranges..."
+              autocomplete="off"
+            />
+            <button id="add-clip-btn" class="btn btn--secondary">+ Add Clip</button>
+          </div>
+          <p id="clip-error" class="field-error hidden" role="alert"></p>
+        </section>
+
+        <!-- Output Section -->
+        <section class="section" id="output-section">
+          <div class="output-row">
+            <div class="output-path-group">
+              <label class="label" for="output-path">Output</label>
+              <span id="output-path" class="output-path text-muted" title=""></span>
+            </div>
+            <div class="output-controls">
+              <select id="format-select" class="select" aria-label="Output format">
+                <option value="mp4">MP4</option>
+                <option value="webm">WebM</option>
+                <option value="mkv">MKV</option>
+              </select>
+              <button id="change-folder-btn" class="btn btn--ghost btn--sm">Change</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- Mode Section -->
+        <section class="section section--mode">
+          <div class="mode-group" role="radiogroup" aria-label="Cut mode">
+            <label class="mode-option">
+              <input type="radio" name="mode" value="accurate" checked />
+              <span class="mode-label">
+                <strong>Accurate</strong>
+                <span class="mode-desc text-muted">Exact cuts. Recommended.</span>
+              </span>
+            </label>
+            <label class="mode-option">
+              <input type="radio" name="mode" value="fast" />
+              <span class="mode-label">
+                <strong>Fast</strong>
+                <span class="mode-desc text-muted">Much faster, but cuts may begin near a keyframe.</span>
+              </span>
+            </label>
+          </div>
+        </section>
+
+        <!-- Export Button -->
+        <div class="export-row">
+          <button id="export-btn" class="btn btn--primary btn--export" disabled>
+            Export <span id="export-count">0</span> Clips
+          </button>
+        </div>
+
+        <!-- Batch Queue — visible when more than one video is queued -->
+        <section id="queue-section" class="section section--queue hidden">
+          <label class="label">Queue</label>
+          <div id="queue-list" class="queue-list"></div>
+        </section>
+      </main>
+    </div>
+
+    <!-- Progress Overlay -->
+    <div id="progress-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Export progress">
+      <div class="overlay-card">
+        <p id="progress-phase" class="progress-phase"></p>
+        <div class="progress-bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+        <div class="progress-detail">
+          <span id="progress-percent" class="progress-percent">0%</span>
+          <span id="progress-clips" class="text-muted"></span>
+        </div>
+        <button id="cancel-btn" class="btn btn--ghost btn--sm">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Done Overlay -->
+    <div id="done-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-label="Export complete">
+      <div class="overlay-card overlay-card--done">
+        <p class="done-check">✓</p>
+        <p id="done-message" class="done-message"></p>
+        <div class="done-actions">
+          <button id="open-folder-btn" class="btn btn--primary">Open Folder</button>
+          <button id="done-close-btn" class="btn btn--ghost">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <script type="module" src="/main.ts"></script>
+  </body>
+</html>
