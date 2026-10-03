@@ -495,6 +495,7 @@ version = "0.1.0"
 dependencies = [
  "dirs 5.0.1",
  "libc",
+ "log",
  "once_cell",
  "regex",
  "serde",
