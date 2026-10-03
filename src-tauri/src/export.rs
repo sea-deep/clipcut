@@ -86,6 +86,7 @@ pub async fn run_export(
                     clip,
                     &final_path,
                     &options.format,
+                    &options.quality,
                     i,
                     clips.len(),
                 )
@@ -106,7 +107,7 @@ pub async fn run_export(
                         eta: None,
                     },
                 );
-                download::download_full(app, &video.url, &video.id).await?
+                download::download_full(app, &video.url, &video.id, &options.quality).await?
             };
 
             if crate::cancel::is_cancelled() {

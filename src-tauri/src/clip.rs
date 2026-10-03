@@ -59,6 +59,35 @@ pub struct ExportOptions {
     pub output_directory: String,
     pub mode: ExportMode,
     pub format: OutputFormat,
+    #[serde(default)]
+    pub quality: QualityOption,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum QualityOption {
+    #[default]
+    Highest,
+    #[serde(rename = "1080p")]
+    P1080,
+    #[serde(rename = "720p")]
+    P720,
+    #[serde(rename = "480p")]
+    P480,
+    #[serde(rename = "360p")]
+    P360,
+}
+
+impl QualityOption {
+    pub fn format_selector(&self) -> &'static str {
+        match self {
+            QualityOption::Highest => "bv*[protocol^=http]+ba[protocol^=http]/b[protocol^=http]/best",
+            QualityOption::P1080 => "bv*[height<=1080][protocol^=http]+ba[protocol^=http]/b[height<=1080][protocol^=http]/best",
+            QualityOption::P720 => "bv*[height<=720][protocol^=http]+ba[protocol^=http]/b[height<=720][protocol^=http]/best",
+            QualityOption::P480 => "bv*[height<=480][protocol^=http]+ba[protocol^=http]/b[height<=480][protocol^=http]/best",
+            QualityOption::P360 => "bv*[height<=360][protocol^=http]+ba[protocol^=http]/b[height<=360][protocol^=http]/best",
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -152,5 +181,23 @@ mod tests {
             end_seconds: 42.0,
         };
         assert!((c.duration() - 27.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn quality_option_defaults_and_selectors() {
+        assert_eq!(QualityOption::default(), QualityOption::Highest);
+        assert!(QualityOption::Highest.format_selector().contains("bv*[protocol^=http]"));
+        assert!(QualityOption::P1080.format_selector().contains("height<=1080"));
+        assert!(QualityOption::P720.format_selector().contains("height<=720"));
+        assert!(QualityOption::P480.format_selector().contains("height<=480"));
+        assert!(QualityOption::P360.format_selector().contains("height<=360"));
+
+        let json = r#"{"output_directory":"/tmp","mode":"accurate","format":"mp4"}"#;
+        let opt: ExportOptions = serde_json::from_str(json).unwrap();
+        assert_eq!(opt.quality, QualityOption::Highest);
+
+        let json_720 = r#"{"output_directory":"/tmp","mode":"accurate","format":"mp4","quality":"720p"}"#;
+        let opt_720: ExportOptions = serde_json::from_str(json_720).unwrap();
+        assert_eq!(opt_720.quality, QualityOption::P720);
     }
 }

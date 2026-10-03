@@ -4,7 +4,7 @@ use tauri::AppHandle;
 
 use crate::{
     binaries,
-    clip::{Clip, OutputFormat},
+    clip::{Clip, OutputFormat, QualityOption},
     error::AppError,
     paths,
     progress::{self, ProgressEvent},
@@ -53,6 +53,7 @@ pub async fn download_full(
     app: &AppHandle,
     url: &str,
     video_id: &str,
+    quality: &QualityOption,
 ) -> Result<PathBuf, AppError> {
     let cache_dir = paths::video_cache_directory(video_id);
     paths::ensure_dir(&cache_dir)?;
@@ -71,13 +72,18 @@ pub async fn download_full(
     tracing::info!("Starting full download for {}", video_id);
 
     let output_template = output_path.to_string_lossy().to_string();
+    let ytdlp_cache = paths::cache_directory().join("ytdlp");
+    let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
 
     let args: Vec<&str> = vec![
-        // Format: prefer standard HTTP/HTTPS streams, merge to mp4
+        "--cache-dir",
+        &cache_dir_str,
         "-f",
-        "bv*[protocol^=http]+ba[protocol^=http]/b[protocol^=http]/best",
+        quality.format_selector(),
         "--merge-output-format",
         "mp4",
+        "-N",
+        "4",
         "--no-playlist",
         "--newline",          // One progress line per line
         "--no-part",          // Don't write .part files (we manage atomicity ourselves)
@@ -270,6 +276,7 @@ pub async fn download_clip_section(
     clip: &Clip,
     output_path: &Path,
     format: &OutputFormat,
+    quality: &QualityOption,
     clip_index: usize,
     clips_total: usize,
 ) -> Result<(), AppError> {
@@ -281,9 +288,14 @@ pub async fn download_clip_section(
     let section_arg = format!("*{:.3}-{:.3}", clip.start_seconds, clip.end_seconds);
     let duration = (clip.end_seconds - clip.start_seconds).max(0.1);
 
+    let ytdlp_cache = paths::cache_directory().join("ytdlp");
+    let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
+
     let args: Vec<&str> = vec![
+        "--cache-dir",
+        &cache_dir_str,
         "-f",
-        "bv*[height<=1080][protocol^=http]+ba[protocol^=http]/b[height<=1080][protocol^=http]/best",
+        quality.format_selector(),
         "--merge-output-format",
         format.extension(),
         "--force-keyframes-at-cuts",

@@ -33,9 +33,14 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
 
     tracing::info!("Loading video metadata (gen {}): {}", generation, url);
 
+    let ytdlp_cache = paths::cache_directory().join("ytdlp");
+    let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
+
     let output = binaries::sidecar_command(&app, "yt-dlp")
         .map_err(|e| e)?
         .args(&[
+            "--cache-dir",
+            &cache_dir_str,
             "--dump-json",
             "--no-download",
             "--no-playlist",

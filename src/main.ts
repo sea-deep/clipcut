@@ -7,6 +7,7 @@ import {
   type ClipEntry,
   type ExportOptions,
   type ExportResult,
+  type QualityOption,
   type VideoInfo,
   allClipsValid,
   clipFromRange,
@@ -37,6 +38,7 @@ const addClipBtn = $<HTMLButtonElement>("add-clip-btn");
 const clipError = $("clip-error");
 const outputPath = $("output-path");
 const changeFolderBtn = $<HTMLButtonElement>("change-folder-btn");
+const qualitySelect = $<HTMLSelectElement>("quality-select");
 const formatSelect = $<HTMLSelectElement>("format-select");
 const exportBtn = $<HTMLButtonElement>("export-btn");
 const exportCount = $("export-count");
@@ -54,6 +56,7 @@ export interface QueueJob {
   video: VideoInfo;
   clips: ClipEntry[];
   format: "mp4" | "webm" | "mkv";
+  quality: QualityOption;
   outputDir: string;
   status: "queued" | "preparing" | "downloading" | "processing" | "completed" | "error" | "cancelled";
   percent: number; // -1 = indeterminate, 0..100 = percentage
@@ -713,7 +716,7 @@ function renderQueue() {
           <div class="queue-card-header">
             <div class="queue-card-info">
               <span class="queue-card-title">${escHtml(formatJobTitle(job))}</span>
-              <span class="queue-card-meta">${escHtml(job.video.title)} • ${job.format.toUpperCase()}</span>
+              <span class="queue-card-meta">${escHtml(job.video.title)} • ${job.quality === "highest" ? "Highest" : job.quality} • ${job.format.toUpperCase()}</span>
             </div>
             <div class="queue-card-actions">
               ${actionsHtml}
@@ -792,12 +795,14 @@ async function handleExport() {
   // The link entry (urlInput) is NOT cleared!
   const jobId = "job-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
   const format = formatSelect.value as "mp4" | "webm" | "mkv";
+  const quality = (qualitySelect?.value || "highest") as QualityOption;
 
   const newJob: QueueJob = {
     id: jobId,
     video,
     clips: toExport,
     format,
+    quality,
     outputDir,
     status: "queued",
     percent: -1,
@@ -827,6 +832,7 @@ async function processQueue() {
     output_directory: nextJob.outputDir,
     mode: "accurate",
     format: nextJob.format,
+    quality: nextJob.quality,
   };
 
   try {

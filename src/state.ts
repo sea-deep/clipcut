@@ -14,10 +14,13 @@ export interface Clip {
   end_seconds: number;
 }
 
+export type QualityOption = "highest" | "1080p" | "720p" | "480p" | "360p";
+
 export interface ExportOptions {
   output_directory: string;
   mode: "accurate" | "fast";
   format: "mp4" | "webm" | "mkv";
+  quality?: QualityOption;
 }
 
 export interface ExportResult {
@@ -49,6 +52,7 @@ export interface AppStore {
   clips: ClipEntry[];
   outputDir: string;
   format: "mp4" | "webm" | "mkv";
+  quality: QualityOption;
   mode: "accurate" | "fast";
   urlInput: string;
 }

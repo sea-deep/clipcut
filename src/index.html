@@ -203,6 +203,16 @@
             </div>
             <div class="output-actions">
               <div class="select-wrapper">
+                <select id="quality-select" class="adw-select" aria-label="Output quality">
+                  <option value="highest" selected>Highest</option>
+                  <option value="1080p">1080p</option>
+                  <option value="720p">720p</option>
+                  <option value="480p">480p</option>
+                  <option value="360p">360p</option>
+                </select>
+                <svg class="icon icon-select-arrow"><use href="#icon-chevron-down"/></svg>
+              </div>
+              <div class="select-wrapper">
                 <select id="format-select" class="adw-select" aria-label="Output format">
                   <option value="mp4">MP4</option>
                   <option value="webm">WebM</option>
