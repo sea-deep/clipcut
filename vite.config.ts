@@ -22,6 +22,7 @@ export default defineConfig(async () => ({
     "import.meta.vitest": "undefined",
   },
   test: {
+    root: ".",
     includeSource: ["src/**/*.ts"],
     environment: "node",
   },
