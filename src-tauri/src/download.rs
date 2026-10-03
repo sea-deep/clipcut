@@ -1,10 +1,10 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use tauri::AppHandle;
 
 use crate::{
     binaries,
-    clip::{Clip, VideoInfo},
+    clip::Clip,
     error::AppError,
     paths,
     progress::{self, ProgressEvent},

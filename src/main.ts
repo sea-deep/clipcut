@@ -9,13 +9,12 @@ import {
   type ExportResult,
   type VideoInfo,
   allClipsValid,
-  clipFromRange,
   clipsFromPaste,
   emptyClip,
   toIpcClips,
   validateClip,
 } from "./state";
-import { formatTimestamp, parseRange } from "./timestamps";
+import { formatTimestamp } from "./timestamps";
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
@@ -297,7 +296,7 @@ function onClipEndChange(id: string, raw: string) {
   updateExportButton();
 }
 
-function onClipEndKeyDown(e: KeyboardEvent, id: string) {
+function onClipEndKeyDown(e: KeyboardEvent, _id: string) {
   if (e.key === "Enter") {
     e.preventDefault();
     // Add a new clip row and focus it

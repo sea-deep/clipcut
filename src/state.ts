@@ -1,4 +1,4 @@
-import { parseMultipleRanges, parseRange, parseTimestamp, formatTimestamp, type ParsedRange } from "./timestamps";
+import { parseMultipleRanges, parseTimestamp, formatTimestamp, type ParsedRange } from "./timestamps";
 
 // Re-export domain types that mirror the Rust structs
 export interface VideoInfo {

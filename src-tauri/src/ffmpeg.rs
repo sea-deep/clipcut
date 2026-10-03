@@ -6,7 +6,6 @@ use crate::{
     binaries,
     clip::{Clip, ExportMode, OutputFormat},
     error::AppError,
-    paths,
     progress::{self, ProgressEvent},
 };
 

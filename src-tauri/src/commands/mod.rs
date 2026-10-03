@@ -9,7 +9,6 @@ use crate::{
     error::AppError,
     export,
     paths,
-    progress,
 };
 
 /// Generation counter to prevent stale metadata from overwriting newer requests.

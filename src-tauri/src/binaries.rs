@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
 

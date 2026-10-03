@@ -59,6 +59,7 @@ pub async fn cancel_all() {
 
 #[cfg(unix)]
 fn kill_pid(pid: u32) {
+    // SAFETY: SIGTERM is safe to send to a known child process PID
     unsafe {
         libc::kill(pid as i32, libc::SIGTERM);
     }
@@ -66,13 +67,10 @@ fn kill_pid(pid: u32) {
 
 #[cfg(windows)]
 fn kill_pid(pid: u32) {
-    use windows::Win32::Foundation::HANDLE;
-    use windows::Win32::System::Threading::{OpenProcess, TerminateProcess, PROCESS_TERMINATE};
-    unsafe {
-        if let Ok(handle) = OpenProcess(PROCESS_TERMINATE, false, pid) {
-            let _ = TerminateProcess(handle, 1);
-        }
-    }
+    // Use taskkill — avoids needing the windows-sys crate
+    let _ = std::process::Command::new("taskkill")
+        .args(["/PID", &pid.to_string(), "/F"])
+        .output();
 }
 
 #[cfg(not(any(unix, windows)))]
