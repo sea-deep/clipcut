@@ -40,26 +40,34 @@ const changeFolderBtn = $<HTMLButtonElement>("change-folder-btn");
 const formatSelect = $<HTMLSelectElement>("format-select");
 const exportBtn = $<HTMLButtonElement>("export-btn");
 const exportCount = $("export-count");
-const progressOverlay = $("progress-overlay");
-const progressPhase = $("progress-phase");
-const progressFill = $<HTMLElement>("progress-fill");
-const progressPercent = $("progress-percent");
-const progressClips = $("progress-clips");
-const cancelBtn = $<HTMLButtonElement>("cancel-btn");
-const doneOverlay = $("done-overlay");
-const doneMessage = $("done-message");
-const openFolderBtn = $<HTMLButtonElement>("open-folder-btn");
-const doneCloseBtn = $<HTMLButtonElement>("done-close-btn");
 const themeToggle = $<HTMLButtonElement>("theme-toggle");
 const sidecarError = $("sidecar-error");
 const sidecarErrorMsg = $("sidecar-error-msg");
+const queueSection = $("queue-section");
+const queueList = $("queue-list");
+const clearQueueBtn = $<HTMLButtonElement>("clear-queue-btn");
 
 // ── App state ─────────────────────────────────────────────────────────────────
+
+export interface QueueJob {
+  id: string;
+  video: VideoInfo;
+  clips: ClipEntry[];
+  format: "mp4" | "webm" | "mkv";
+  outputDir: string;
+  status: "queued" | "preparing" | "downloading" | "processing" | "completed" | "error" | "cancelled";
+  percent: number; // -1 = indeterminate, 0..100 = percentage
+  statusText: string;
+  result?: ExportResult;
+  error?: string;
+  createdAt: number;
+}
 
 let appState: AppState = { phase: "empty" };
 let clips: ClipEntry[] = [];
 let outputDir = "";
-let lastExportResult: ExportResult | null = null;
+let jobQueue: QueueJob[] = [];
+let activeJobId: string | null = null;
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
@@ -210,27 +218,51 @@ function setupEventListeners() {
     }
   });
 
-  // Cancel
-  cancelBtn.addEventListener("click", handleCancel);
-
-  // Done overlay
-  openFolderBtn.addEventListener("click", () => {
-    if (lastExportResult) {
-      invoke("open_directory", { path: lastExportResult.output_directory });
-    }
-  });
-  doneCloseBtn.addEventListener("click", hideDoneOverlay);
-
-  // Escape closes overlays
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      if (!progressOverlay.classList.contains("hidden")) handleCancel();
-      else if (!doneOverlay.classList.contains("hidden")) hideDoneOverlay();
-    }
-  });
-
   // Preview
   previewBtn.addEventListener("click", handlePreview);
+
+  // Queue click delegation
+  queueList.addEventListener("click", (e) => {
+    const target = e.target as HTMLElement;
+    const cancelBtn = target.closest<HTMLButtonElement>(".queue-cancel-btn");
+    const removeBtn = target.closest<HTMLButtonElement>(".queue-remove-btn");
+    const openBtn = target.closest<HTMLButtonElement>(".queue-open-btn");
+    const dismissBtn = target.closest<HTMLButtonElement>(".queue-dismiss-btn");
+
+    if (cancelBtn) {
+      const id = cancelBtn.dataset.id;
+      if (id) handleCancelJob(id);
+    } else if (removeBtn) {
+      const id = removeBtn.dataset.id;
+      if (id) {
+        jobQueue = jobQueue.filter((j) => j.id !== id);
+        renderQueue();
+      }
+    } else if (openBtn) {
+      const dir = openBtn.dataset.dir;
+      if (dir) invoke("open_directory", { path: dir });
+    } else if (dismissBtn) {
+      const id = dismissBtn.dataset.id;
+      if (id) {
+        jobQueue = jobQueue.filter((j) => j.id !== id);
+        renderQueue();
+      }
+    }
+  });
+
+  clearQueueBtn.addEventListener("click", () => {
+    jobQueue = jobQueue.filter(
+      (j) => j.status === "queued" || j.status === "preparing" || j.status === "downloading" || j.status === "processing"
+    );
+    renderQueue();
+  });
+
+  // Escape cancels active job if running
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && activeJobId) {
+      handleCancel();
+    }
+  });
 }
 
 // ── Load Video ────────────────────────────────────────────────────────────────
@@ -594,64 +626,243 @@ async function handleChangeFolder() {
   }
 }
 
+// ── Export Queue ─────────────────────────────────────────────────────────────
+
+function formatJobTitle(job: QueueJob): string {
+  if (job.clips.length === 0) return "Clip";
+  const first = job.clips[0];
+  const start = first.startRaw || (first.startSeconds !== null ? formatTimestamp(first.startSeconds) : "00:00");
+  const end = first.endRaw || (first.endSeconds !== null ? formatTimestamp(first.endSeconds) : "00:00");
+  if (job.clips.length === 1) {
+    return `${start} → ${end}`;
+  }
+  return `${start} → ${end} (+${job.clips.length - 1} more)`;
+}
+
+function renderQueue() {
+  if (jobQueue.length === 0) {
+    queueSection.classList.add("hidden");
+    queueList.innerHTML = "";
+    return;
+  }
+
+  queueSection.classList.remove("hidden");
+
+  const hasFinished = jobQueue.some(
+    (j) => j.status === "completed" || j.status === "error" || j.status === "cancelled"
+  );
+  if (hasFinished) {
+    clearQueueBtn.classList.remove("hidden");
+  } else {
+    clearQueueBtn.classList.add("hidden");
+  }
+
+  queueList.innerHTML = jobQueue
+    .map((job) => {
+      const isIndeterminate = job.percent < 0;
+      const pctDisplay = isIndeterminate ? "" : `${job.percent}%`;
+      const fillWidth = isIndeterminate ? 100 : job.percent;
+      const indeterminateClass = isIndeterminate ? "progress-fill--indeterminate" : "";
+      const isCompleted = job.status === "completed";
+      const isError = job.status === "error";
+      const isActive = job.status === "preparing" || job.status === "downloading" || job.status === "processing";
+      const isQueued = job.status === "queued";
+
+      let statusBadge = escHtml(job.statusText);
+      if (isCompleted) {
+        statusBadge = `<span style="color: var(--color-success)">✓ ${escHtml(job.statusText)}</span>`;
+      } else if (isError) {
+        statusBadge = `<span style="color: var(--color-danger)">✕ ${escHtml(job.statusText)}</span>`;
+      }
+
+      let actionsHtml = "";
+      if (isActive) {
+        actionsHtml = `<button class="btn btn--flat btn--sm queue-cancel-btn" data-id="${job.id}" type="button">Cancel</button>`;
+      } else if (isQueued) {
+        actionsHtml = `<button class="btn btn--flat btn--sm queue-remove-btn" data-id="${job.id}" type="button">Remove</button>`;
+      } else if (isCompleted) {
+        const outDir = job.result?.output_directory || job.outputDir;
+        actionsHtml = `
+          <button class="btn btn--secondary btn--sm queue-open-btn" data-dir="${escHtml(outDir)}" type="button">
+            <svg class="icon icon-sm"><use href="#icon-folder"/></svg>
+            <span>Open</span>
+          </button>
+          <button class="btn-icon btn-icon--sm queue-dismiss-btn" data-id="${job.id}" title="Dismiss" type="button">
+            <svg class="icon icon-sm"><use href="#icon-close"/></svg>
+          </button>
+        `;
+      } else {
+        // error or cancelled
+        actionsHtml = `
+          <button class="btn-icon btn-icon--sm queue-dismiss-btn" data-id="${job.id}" title="Dismiss" type="button">
+            <svg class="icon icon-sm"><use href="#icon-close"/></svg>
+          </button>
+        `;
+      }
+
+      const cardClasses = [
+        "queue-card",
+        isCompleted ? "queue-card--completed" : "",
+        isError ? "queue-card--error" : "",
+      ]
+        .filter(Boolean)
+        .join(" ");
+
+      return `
+        <div class="${cardClasses}" id="queue-job-${job.id}" role="listitem">
+          <div class="queue-card-header">
+            <div class="queue-card-info">
+              <span class="queue-card-title">${escHtml(formatJobTitle(job))}</span>
+              <span class="queue-card-meta">${escHtml(job.video.title)} • ${job.format.toUpperCase()}</span>
+            </div>
+            <div class="queue-card-actions">
+              ${actionsHtml}
+            </div>
+          </div>
+          <div class="queue-progress-bar">
+            <div class="adw-progress-track">
+              <div id="queue-fill-${job.id}" class="adw-progress-fill ${indeterminateClass}" style="width: ${fillWidth}%"></div>
+            </div>
+          </div>
+          <div class="queue-card-footer">
+            <span id="queue-status-${job.id}" class="queue-status-text">${statusBadge}</span>
+            <span id="queue-pct-${job.id}" class="queue-percent-text">${pctDisplay}</span>
+          </div>
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function updateActiveJobUI(job: QueueJob) {
+  const fill = document.getElementById(`queue-fill-${job.id}`);
+  const statusEl = document.getElementById(`queue-status-${job.id}`);
+  const pctEl = document.getElementById(`queue-pct-${job.id}`);
+
+  if (fill) {
+    if (job.percent < 0) {
+      fill.style.width = "100%";
+      fill.classList.add("progress-fill--indeterminate");
+    } else {
+      fill.style.width = `${job.percent}%`;
+      fill.classList.remove("progress-fill--indeterminate");
+    }
+  }
+
+  if (statusEl) {
+    statusEl.textContent = job.statusText;
+  }
+
+  if (pctEl) {
+    pctEl.textContent = job.percent >= 0 ? `${job.percent}%` : "";
+  }
+}
+
+async function handleCancelJob(jobId: string) {
+  if (activeJobId === jobId) {
+    await invoke("cancel_export");
+  } else {
+    jobQueue = jobQueue.filter((j) => j.id !== jobId);
+    renderQueue();
+  }
+}
+
 // ── Export ────────────────────────────────────────────────────────────────────
 
 async function handleExport() {
-  if (appState.phase !== "video_loaded") return;
+  if (appState.phase !== "video_loaded" && appState.phase !== "exporting" && appState.phase !== "done") return;
   const video = appState.video;
 
-  // If there's a valid pending clip in the input fields, auto-commit it
+  // Auto-commit pending clip in inputs if valid
   const pending = getPendingClip();
+  const toExport: ClipEntry[] = [...clips];
   if (pending) {
-    clips.push(pending);
-    addStartInput.value = "";
-    addEndInput.value = "";
-    renderClips();
+    toExport.push(pending);
   }
 
-  const ipcClips = toIpcClips(clips);
-  if (ipcClips.length === 0) return;
+  if (toExport.length === 0) return;
 
+  // In-queue duration entry should be cleared immediately
+  addStartInput.value = "";
+  addEndInput.value = "";
+  clips = [];
+  renderClips();
+  updateExportButton();
+
+  // The link entry (urlInput) is NOT cleared!
+  const jobId = "job-" + Date.now() + "-" + Math.random().toString(36).slice(2, 6);
   const format = formatSelect.value as "mp4" | "webm" | "mkv";
 
-  const options: ExportOptions = {
-    output_directory: outputDir,
-    mode: "accurate",
+  const newJob: QueueJob = {
+    id: jobId,
+    video,
+    clips: toExport,
     format,
+    outputDir,
+    status: "queued",
+    percent: -1,
+    statusText: "Queued…",
+    createdAt: Date.now(),
   };
 
-  appState = { phase: "exporting", video };
-  showProgressOverlay();
-  setProgressPhase("Preparing…", 0);
+  jobQueue.push(newJob);
+  renderQueue();
+  processQueue();
+}
+
+async function processQueue() {
+  if (activeJobId !== null) return;
+
+  const nextJob = jobQueue.find((j) => j.status === "queued");
+  if (!nextJob) return;
+
+  activeJobId = nextJob.id;
+  nextJob.status = "preparing";
+  nextJob.statusText = "Connecting to YouTube…";
+  nextJob.percent = -1;
+  renderQueue();
+
+  const ipcClips = toIpcClips(nextJob.clips);
+  const options: ExportOptions = {
+    output_directory: nextJob.outputDir,
+    mode: "accurate",
+    format: nextJob.format,
+  };
 
   try {
     const result = await invoke<ExportResult>("export_clips", {
-      video,
+      video: nextJob.video,
       clips: ipcClips,
       options,
     });
 
-    lastExportResult = result;
-    hideProgressOverlay();
-
     if (result.cancelled) {
-      doneMessage.textContent = `Export cancelled (${result.clips_completed} of ${result.clips_total} clips saved)`;
+      nextJob.status = "cancelled";
+      nextJob.statusText = `Cancelled (${result.clips_completed} of ${result.clips_total} clips saved)`;
+      nextJob.percent = 100;
     } else {
-      doneMessage.textContent = `${result.clips_completed} clip${result.clips_completed !== 1 ? "s" : ""} exported successfully`;
+      nextJob.status = "completed";
+      nextJob.result = result;
+      nextJob.statusText = `${result.clips_completed} clip${result.clips_completed !== 1 ? "s" : ""} exported`;
+      nextJob.percent = 100;
     }
-    showDoneOverlay();
-    appState = { phase: "done", video, result };
   } catch (e: unknown) {
     const err = e as { message?: string };
-    hideProgressOverlay();
-    showClipError(err?.message ?? "Export failed.");
-    appState = { phase: "video_loaded", video };
+    nextJob.status = "error";
+    nextJob.error = err?.message ?? "Export failed.";
+    nextJob.statusText = nextJob.error;
+    nextJob.percent = 0;
+  } finally {
+    activeJobId = null;
+    renderQueue();
+    processQueue();
   }
 }
 
 async function handleCancel() {
-  await invoke("cancel_export");
-  hideProgressOverlay();
+  if (activeJobId) {
+    await handleCancelJob(activeJobId);
+  }
 }
 
 // ── Preview ───────────────────────────────────────────────────────────────────
@@ -659,7 +870,6 @@ async function handleCancel() {
 function handlePreview() {
   if (appState.phase !== "video_loaded" && appState.phase !== "exporting" && appState.phase !== "done") return;
   const video = appState.video;
-  // Open in default browser as reliable fallback (WebView embed can be restricted)
   invoke("open_directory", { path: video.url });
 }
 
@@ -667,42 +877,57 @@ function handlePreview() {
 
 function setupProgressListener() {
   listen("export-progress", (event) => {
+    if (!activeJobId) return;
+    const currentJob = jobQueue.find((j) => j.id === activeJobId);
+    if (!currentJob) return;
+
     const payload = event.payload as Record<string, unknown>;
     const phase = payload["phase"] as string;
 
     switch (phase) {
       case "preparing":
-        setProgressPhase("Preparing…", 0);
+        currentJob.status = "preparing";
+        currentJob.statusText = "Connecting to YouTube…";
+        currentJob.percent = -1;
         break;
       case "downloading": {
+        currentJob.status = "downloading";
         const pct = payload["percent"] as number | null;
         if (pct !== null && pct !== undefined) {
-          setProgressPhase(`Downloading source…`, Math.round(pct * 0.6));
-          progressPercent.textContent = `${Math.round(pct)}%`;
+          currentJob.percent = Math.round(pct);
+          currentJob.statusText = `Downloading… ${Math.round(pct)}%`;
         } else {
-          setProgressPhase("Downloading source…", -1); // indeterminate
+          currentJob.percent = -1;
+          currentJob.statusText = "Downloading…";
         }
         break;
       }
       case "processing": {
+        currentJob.status = "processing";
         const ci = ((payload["clip_index"] as number) ?? 0) + 1;
         const ct = (payload["clips_total"] as number) ?? 1;
         const overall = (payload["overall_percent"] as number) ?? 0;
-        const label = ct > 1 ? `Exporting clip ${ci} of ${ct}…` : "Exporting clip…";
-        setProgressPhase(label, Math.round(overall));
-        progressClips.textContent = `${ci} of ${ct}`;
+        currentJob.percent = Math.round(overall);
+        currentJob.statusText = ct > 1 ? `Exporting clip ${ci} of ${ct}…` : `Exporting clip…`;
         break;
       }
       case "finalizing":
-        setProgressPhase("Finalising…", 99);
+        currentJob.status = "processing";
+        currentJob.statusText = "Finalising…";
+        currentJob.percent = 99;
         break;
       case "complete":
-        setProgressPhase("Complete", 100);
+        currentJob.status = "completed";
+        currentJob.statusText = "Export completed";
+        currentJob.percent = 100;
         break;
       case "cancelled":
-        hideProgressOverlay();
+        currentJob.status = "cancelled";
+        currentJob.statusText = "Export cancelled";
         break;
     }
+
+    updateActiveJobUI(currentJob);
   });
 }
 
@@ -715,48 +940,6 @@ function setupSidecarListener() {
       sidecarError.classList.remove("hidden");
     }
   });
-}
-
-// ── Progress UI ───────────────────────────────────────────────────────────────
-
-function showProgressOverlay() {
-  progressOverlay.classList.remove("hidden");
-  progressFill.style.width = "0%";
-  progressPercent.textContent = "0%";
-  progressClips.textContent = "";
-}
-
-function hideProgressOverlay() {
-  progressOverlay.classList.add("hidden");
-}
-
-function setProgressPhase(label: string, percent: number) {
-  progressPhase.textContent = label;
-  if (percent < 0) {
-    // Indeterminate
-    progressFill.style.width = "100%";
-    progressFill.classList.add("progress-fill--indeterminate");
-    progressPercent.textContent = "…";
-  } else {
-    progressFill.style.width = `${percent}%`;
-    progressFill.classList.remove("progress-fill--indeterminate");
-    progressPercent.textContent = `${percent}%`;
-    progressOverlay
-      .querySelector(".progress-bar")!
-      .setAttribute("aria-valuenow", String(percent));
-  }
-}
-
-function showDoneOverlay() {
-  doneOverlay.classList.remove("hidden");
-  openFolderBtn.focus();
-}
-
-function hideDoneOverlay() {
-  doneOverlay.classList.add("hidden");
-  if (appState.phase === "done") {
-    appState = { phase: "video_loaded", video: appState.video };
-  }
 }
 
 // ── Error Helpers ─────────────────────────────────────────────────────────────

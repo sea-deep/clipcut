@@ -84,6 +84,12 @@
       <symbol id="icon-external" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
       </symbol>
+
+      <!-- Close / Dismiss (Adwaita window-close-symbolic) -->
+      <symbol id="icon-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="18" y1="6" x2="6" y2="18"/>
+        <line x1="6" y1="6" x2="18" y2="18"/>
+      </symbol>
     </svg>
   </head>
   <body>
@@ -216,6 +222,15 @@
             <span>Export <span id="export-count">0</span> Clips</span>
           </button>
         </div>
+
+        <!-- Export Queue Section -->
+        <section id="queue-section" class="section queue-section hidden">
+          <div class="section-header-row">
+            <label class="section-label">Export Queue</label>
+            <button id="clear-queue-btn" class="btn btn--flat btn--sm hidden" type="button">Clear Completed</button>
+          </div>
+          <div id="queue-list" class="queue-list" role="list"></div>
+        </section>
       </main>
     </div>
 
