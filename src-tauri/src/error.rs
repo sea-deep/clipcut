@@ -22,7 +22,7 @@ pub enum AppError {
     #[error("ClipCut doesn't have permission to write to that folder.")]
     PermissionDenied,
 
-    #[error("ClipCut's video tools encountered an error. Try reinstalling ClipCut.")]
+    #[error("ClipCut's video tools encountered an error: {detail}")]
     ToolFailure { detail: String },
 
     #[error("{0}")]

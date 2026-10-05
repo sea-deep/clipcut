@@ -13,11 +13,10 @@ pub fn sidecar_command(
     app: &AppHandle,
     name: &str,
 ) -> Result<tauri_plugin_shell::process::Command, AppError> {
-    app.shell()
+    Ok(app
+        .shell()
         .sidecar(name)
-        .map_err(|e| AppError::ToolFailure {
-            detail: format!("Could not locate sidecar '{}': {}", name, e),
-        })
+        .unwrap_or_else(|_| app.shell().command(name)))
 }
 
 /// Quick health check — runs `<binary> --version` and returns the version string.
