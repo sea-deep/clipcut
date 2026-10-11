@@ -1,0 +1,23 @@
+stages:
+  - build
+
+variables:
+  GIT_DEPTH: 1
+
+windows-x64:
+  stage: build
+  tags:
+    - saas-windows-medium-amd64
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_PIPELINE_SOURCE == "web"
+    - if: $CI_COMMIT_BRANCH == "main"
+  script:
+    - powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
+  artifacts:
+    name: "clipcut-windows-$CI_COMMIT_REF_SLUG"
+    when: on_success
+    expire_in: 30 days
+    paths:
+      - src-tauri/target/release/bundle/nsis/*.exe
+      - src-tauri/target/release/clipcut.exe

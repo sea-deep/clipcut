@@ -82,6 +82,13 @@ pub async fn extract_clip(
         acodec.to_string(),
     ];
     args.extend(extra);
+    let muxer_format = match format {
+        OutputFormat::Mp4 => "mp4",
+        OutputFormat::Webm => "webm",
+        OutputFormat::Mkv => "matroska",
+    };
+    args.push("-f".to_string());
+    args.push(muxer_format.to_string());
     args.push("-progress".to_string());
     args.push("pipe:1".to_string());
     args.push(output_str);

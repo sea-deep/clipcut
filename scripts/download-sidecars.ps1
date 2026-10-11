@@ -1,5 +1,6 @@
 # PowerShell sidecar downloader for Windows
 $ErrorActionPreference = "Stop"
+$ProgressPreference = "SilentlyContinue"
 
 $BinDir = Join-Path $PSScriptRoot "..\src-tauri\binaries"
 if (-not (Test-Path $BinDir)) {
