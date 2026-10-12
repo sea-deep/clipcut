@@ -1,6 +1,10 @@
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex as StdMutex};
 
+use once_cell::sync::Lazy;
 use tauri::AppHandle;
+use tokio::sync::Mutex as TokioMutex;
 
 use crate::{
     binaries,
@@ -9,6 +13,16 @@ use crate::{
     paths,
     progress::{self, ProgressEvent},
 };
+
+static DOWNLOAD_LOCKS: Lazy<StdMutex<HashMap<String, Arc<TokioMutex<()>>>>> =
+    Lazy::new(|| StdMutex::new(HashMap::new()));
+
+fn get_download_lock(video_id: &str) -> Arc<TokioMutex<()>> {
+    let mut map = DOWNLOAD_LOCKS.lock().unwrap();
+    map.entry(video_id.to_string())
+        .or_insert_with(|| Arc::new(TokioMutex::new(())))
+        .clone()
+}
 
 /// Download strategy for a given video + clip set.
 #[derive(Debug, Clone, PartialEq)]
@@ -31,6 +45,12 @@ pub fn choose_strategy(clips: &[Clip], video_duration: f64, cached_full: bool) -
         return DownloadStrategy::Full;
     }
 
+    // For short videos (<= 10 mins / 600s), full download is fast, pre-warmed in background,
+    // and enables instant ~0.05s ffmpeg cuts.
+    if video_duration > 0.0 && video_duration <= 600.0 {
+        return DownloadStrategy::Full;
+    }
+
     let total_clip_duration: f64 = clips.iter().map(|c| c.duration()).sum();
     let coverage = if video_duration > 0.0 {
         total_clip_duration / video_duration
@@ -38,7 +58,7 @@ pub fn choose_strategy(clips: &[Clip], video_duration: f64, cached_full: bool) -
         1.0
     };
 
-    // Many tiny clips spread across a long video → partial is much faster.
+    // Many tiny clips spread across a long video (> 10 mins) → partial is much faster.
     // Dense coverage → full download and clip locally.
     if coverage < 0.40 {
         DownloadStrategy::Partial
@@ -60,6 +80,10 @@ pub async fn download_full(
 
     let output_path = cache_dir.join("source.mp4");
 
+    // Coordinate through per-video lock so concurrent / pre-warm downloads don't duplicate work
+    let lock = get_download_lock(video_id);
+    let _guard = lock.lock().await;
+
     // Skip if already fully downloaded (trust size > 0 as a basic check)
     if output_path.exists() {
         let meta = std::fs::metadata(&output_path)?;
@@ -75,6 +99,43 @@ pub async fn download_full(
     let ytdlp_cache = paths::cache_directory().join("ytdlp");
     let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
 
+    let info_json_path = cache_dir.join("info.json");
+    let has_info_json = info_json_path.exists()
+        && std::fs::metadata(&info_json_path)
+            .map(|m| m.len() > 0)
+            .unwrap_or(false);
+    let info_json_str = info_json_path.to_string_lossy().to_string();
+
+    // Fast path: use pre-fetched info.json to eliminate YouTube network handshake
+    if has_info_json {
+        let args: Vec<&str> = vec![
+            "--cache-dir",
+            &cache_dir_str,
+            "--load-info-json",
+            &info_json_str,
+            "-f",
+            quality.format_selector(),
+            "--merge-output-format",
+            "mp4",
+            "-N",
+            "4",
+            "--no-playlist",
+            "--newline",
+            "-o",
+            &output_template,
+        ];
+
+        let res = run_ytdlp_download(app, &args, &output_path).await;
+        if res.is_ok() || crate::cancel::is_cancelled() {
+            return res.map(|_| output_path);
+        }
+        tracing::warn!(
+            "Pre-fetched info.json full download failed, falling back to direct URL fetch: {:?}",
+            res.err()
+        );
+    }
+
+    // Fallback: direct URL fetch
     let args: Vec<&str> = vec![
         "--cache-dir",
         &cache_dir_str,
@@ -85,8 +146,7 @@ pub async fn download_full(
         "-N",
         "4",
         "--no-playlist",
-        "--newline", // One progress line per line
-        "--no-part", // Don't write .part files (we manage atomicity ourselves)
+        "--newline",
         "--js-runtimes",
         "node",
         "-o",
@@ -94,8 +154,17 @@ pub async fn download_full(
         url,
     ];
 
+    run_ytdlp_download(app, &args, &output_path).await?;
+    Ok(output_path)
+}
+
+async fn run_ytdlp_download(
+    app: &AppHandle,
+    args: &[&str],
+    output_path: &Path,
+) -> Result<(), AppError> {
     let cmd = binaries::sidecar_command(app, "yt-dlp")?;
-    let (mut rx, child) = cmd.args(&args).spawn().map_err(|e| AppError::ToolFailure {
+    let (mut rx, child) = cmd.args(args).spawn().map_err(|e| AppError::ToolFailure {
         detail: format!("Failed to spawn yt-dlp: {}", e),
     })?;
 
@@ -152,13 +221,13 @@ pub async fn download_full(
     }
 
     // Verify the file exists and has content
-    if !output_path.exists() || std::fs::metadata(&output_path)?.len() == 0 {
+    if !output_path.exists() || std::fs::metadata(output_path)?.len() == 0 {
         return Err(AppError::ToolFailure {
             detail: "yt-dlp completed but output file is missing or empty.".into(),
         });
     }
 
-    Ok(output_path)
+    Ok(())
 }
 
 /// Download only specific time sections using yt-dlp's --download-sections.
@@ -187,6 +256,8 @@ pub async fn download_sections(
         "--merge-output-format".into(),
         "mp4".into(),
         "--force-keyframes-at-cuts".into(),
+        "-N".into(),
+        "4".into(),
         "--no-playlist".into(),
         "--newline".into(),
         "-o".into(),
@@ -428,6 +499,8 @@ pub async fn download_clip_section(
             "--force-keyframes-at-cuts",
             "--downloader-args",
             "ffmpeg:-preset ultrafast",
+            "-N",
+            "4",
             "--download-sections",
             &section_arg,
             "--no-playlist",
@@ -473,6 +546,8 @@ pub async fn download_clip_section(
         "--force-keyframes-at-cuts",
         "--downloader-args",
         "ffmpeg:-preset ultrafast",
+        "-N",
+        "4",
         "--download-sections",
         &section_arg,
         "--no-playlist",

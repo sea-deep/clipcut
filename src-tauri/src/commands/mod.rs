@@ -89,6 +89,25 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
 
     let thumbnail_url = json["thumbnail"].as_str().unwrap_or("").to_string();
 
+    // Pre-warm the cache for videos <= 10 minutes (600s) in the background.
+    // While the user reviews metadata and enters timestamps (typically 15-45s),
+    // source.mp4 downloads in the background. When they click Export, cutting from
+    // the local source file is instantaneous (~0.1s).
+    if duration_seconds <= 600.0 {
+        let app_handle = app.clone();
+        let url_clone = url.clone();
+        let id_clone = id.clone();
+        tauri::async_runtime::spawn(async move {
+            let _ = crate::download::download_full(
+                &app_handle,
+                &url_clone,
+                &id_clone,
+                &crate::clip::QualityOption::Highest,
+            )
+            .await;
+        });
+    }
+
     Ok(VideoInfo {
         id,
         url,
