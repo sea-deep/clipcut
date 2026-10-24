@@ -90,9 +90,17 @@ impl AppError {
         } else if lower.contains("permission denied") {
             AppError::PermissionDenied
         } else {
-            AppError::ToolFailure {
-                detail: stderr.to_string(),
-            }
+            let error_lines: Vec<&str> = stderr
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty() && !line.starts_with("WARNING:"))
+                .collect();
+            let detail = if !error_lines.is_empty() {
+                error_lines.join(" ")
+            } else {
+                stderr.trim().to_string()
+            };
+            AppError::ToolFailure { detail }
         }
     }
 
@@ -104,9 +112,17 @@ impl AppError {
         } else if lower.contains("permission denied") {
             AppError::PermissionDenied
         } else {
-            AppError::ToolFailure {
-                detail: stderr.to_string(),
-            }
+            let error_lines: Vec<&str> = stderr
+                .lines()
+                .map(str::trim)
+                .filter(|line| !line.is_empty() && !line.starts_with("WARNING:"))
+                .collect();
+            let detail = if !error_lines.is_empty() {
+                error_lines.join(" ")
+            } else {
+                stderr.trim().to_string()
+            };
+            AppError::ToolFailure { detail }
         }
     }
 }

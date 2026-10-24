@@ -67,6 +67,24 @@ pub fn choose_strategy(clips: &[Clip], video_duration: f64, cached_full: bool) -
     }
 }
 
+fn base_ytdlp_args(app: &AppHandle, cache_dir_str: &str) -> Vec<String> {
+    let mut args = vec![
+        "--cache-dir".to_string(),
+        cache_dir_str.to_string(),
+        "-4".to_string(),
+        "--no-warnings".to_string(),
+    ];
+    if let Some(ffmpeg_loc) = binaries::ffmpeg_location(app) {
+        args.push("--ffmpeg-location".to_string());
+        args.push(ffmpeg_loc.to_string_lossy().to_string());
+    }
+    if let Some(js_runtime) = binaries::js_runtime_arg() {
+        args.push("--js-runtimes".to_string());
+        args.push(js_runtime);
+    }
+    args
+}
+
 /// Download a full video to the cache directory.
 /// Returns the path to the downloaded file.
 pub async fn download_full(
@@ -108,22 +126,21 @@ pub async fn download_full(
 
     // Fast path: use pre-fetched info.json to eliminate YouTube network handshake
     if has_info_json {
-        let args: Vec<&str> = vec![
-            "--cache-dir",
-            &cache_dir_str,
-            "--load-info-json",
-            &info_json_str,
-            "-f",
-            quality.format_selector(),
-            "--merge-output-format",
-            "mp4",
-            "-N",
-            "4",
-            "--no-playlist",
-            "--newline",
-            "-o",
-            &output_template,
-        ];
+        let mut args = base_ytdlp_args(app, &cache_dir_str);
+        args.extend([
+            "--load-info-json".to_string(),
+            info_json_str,
+            "-f".to_string(),
+            quality.format_selector().to_string(),
+            "--merge-output-format".to_string(),
+            "mp4".to_string(),
+            "-N".to_string(),
+            "4".to_string(),
+            "--no-playlist".to_string(),
+            "--newline".to_string(),
+            "-o".to_string(),
+            output_template.clone(),
+        ]);
 
         let res = run_ytdlp_download(app, &args, &output_path).await;
         if res.is_ok() || crate::cancel::is_cancelled() {
@@ -136,23 +153,20 @@ pub async fn download_full(
     }
 
     // Fallback: direct URL fetch
-    let args: Vec<&str> = vec![
-        "--cache-dir",
-        &cache_dir_str,
-        "-f",
-        quality.format_selector(),
-        "--merge-output-format",
-        "mp4",
-        "-N",
-        "4",
-        "--no-playlist",
-        "--newline",
-        "--js-runtimes",
-        "node",
-        "-o",
-        &output_template,
-        url,
-    ];
+    let mut args = base_ytdlp_args(app, &cache_dir_str);
+    args.extend([
+        "-f".to_string(),
+        quality.format_selector().to_string(),
+        "--merge-output-format".to_string(),
+        "mp4".to_string(),
+        "-N".to_string(),
+        "4".to_string(),
+        "--no-playlist".to_string(),
+        "--newline".to_string(),
+        "-o".to_string(),
+        output_template,
+        url.to_string(),
+    ]);
 
     run_ytdlp_download(app, &args, &output_path).await?;
     Ok(output_path)
@@ -160,7 +174,7 @@ pub async fn download_full(
 
 async fn run_ytdlp_download(
     app: &AppHandle,
-    args: &[&str],
+    args: &[String],
     output_path: &Path,
 ) -> Result<(), AppError> {
     let cmd = binaries::sidecar_command(app, "yt-dlp")?;
@@ -256,31 +270,32 @@ pub async fn download_sections(
     let output_template = cache_dir.join("%(section_start)s-%(section_end)s.%(ext)s");
     let output_str = output_template.to_string_lossy().to_string();
 
-    let mut args: Vec<String> = vec![
+    let ytdlp_cache = paths::cache_directory().join("ytdlp");
+    let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
+
+    let mut args = base_ytdlp_args(app, &cache_dir_str);
+    args.extend([
         "-f".into(),
         "bestvideo[ext=mp4]+bestaudio[ext=m4a]/bestvideo+bestaudio/best".into(),
         "--merge-output-format".into(),
         "mp4".into(),
         "--force-keyframes-at-cuts".into(),
+        "--downloader-args".into(),
+        "ffmpeg:-preset ultrafast".into(),
         "-N".into(),
         "4".into(),
         "--no-playlist".into(),
         "--newline".into(),
         "-o".into(),
         output_str,
-    ];
+    ]);
     args.extend(section_args);
     args.push(url.to_string());
 
-    let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-
     let cmd = binaries::sidecar_command(app, "yt-dlp")?;
-    let (mut rx, child) = cmd
-        .args(&arg_refs)
-        .spawn()
-        .map_err(|e| AppError::ToolFailure {
-            detail: format!("Failed to spawn yt-dlp: {}", e),
-        })?;
+    let (mut rx, child) = cmd.args(&args).spawn().map_err(|e| AppError::ToolFailure {
+        detail: format!("Failed to spawn yt-dlp: {}", e),
+    })?;
 
     crate::cancel::set_ytdlp_pid(Some(child.pid())).await;
 
@@ -347,7 +362,7 @@ pub async fn download_sections(
 #[allow(clippy::too_many_arguments)]
 async fn execute_ytdlp_cut(
     app: &AppHandle,
-    args: &[&str],
+    args: &[String],
     duration: f64,
     output_path: &Path,
     part_path: &Path,
@@ -492,28 +507,26 @@ pub async fn download_clip_section(
 
     // Fast path: reuse pre-fetched video metadata to eliminate network handshake
     if has_info_json {
-        let args: Vec<&str> = vec![
-            "--cache-dir",
-            &cache_dir_str,
-            "-4",
-            "--load-info-json",
-            &info_json_str,
-            "-f",
-            quality.format_selector(),
-            "--merge-output-format",
-            format.extension(),
-            "--force-keyframes-at-cuts",
-            "--downloader-args",
-            "ffmpeg:-preset ultrafast",
-            "-N",
-            "4",
-            "--download-sections",
-            &section_arg,
-            "--no-playlist",
-            "--newline",
-            "-o",
-            &output_str,
-        ];
+        let mut args = base_ytdlp_args(app, &cache_dir_str);
+        args.extend([
+            "--load-info-json".to_string(),
+            info_json_str,
+            "-f".to_string(),
+            quality.format_selector().to_string(),
+            "--merge-output-format".to_string(),
+            format.extension().to_string(),
+            "--force-keyframes-at-cuts".to_string(),
+            "--downloader-args".to_string(),
+            "ffmpeg:-preset ultrafast".to_string(),
+            "-N".to_string(),
+            "4".to_string(),
+            "--download-sections".to_string(),
+            section_arg.clone(),
+            "--no-playlist".to_string(),
+            "--newline".to_string(),
+            "-o".to_string(),
+            output_str.clone(),
+        ]);
 
         let res = execute_ytdlp_cut(
             app,
@@ -541,29 +554,25 @@ pub async fn download_clip_section(
     }
 
     // Fallback: direct URL fetch
-    let args: Vec<&str> = vec![
-        "--cache-dir",
-        &cache_dir_str,
-        "-4",
-        "-f",
-        quality.format_selector(),
-        "--merge-output-format",
-        format.extension(),
-        "--force-keyframes-at-cuts",
-        "--downloader-args",
-        "ffmpeg:-preset ultrafast",
-        "-N",
-        "4",
-        "--download-sections",
-        &section_arg,
-        "--no-playlist",
-        "--newline",
-        "--js-runtimes",
-        "node",
-        "-o",
-        &output_str,
-        url,
-    ];
+    let mut args = base_ytdlp_args(app, &cache_dir_str);
+    args.extend([
+        "-f".to_string(),
+        quality.format_selector().to_string(),
+        "--merge-output-format".to_string(),
+        format.extension().to_string(),
+        "--force-keyframes-at-cuts".to_string(),
+        "--downloader-args".to_string(),
+        "ffmpeg:-preset ultrafast".to_string(),
+        "-N".to_string(),
+        "4".to_string(),
+        "--download-sections".to_string(),
+        section_arg,
+        "--no-playlist".to_string(),
+        "--newline".to_string(),
+        "-o".to_string(),
+        output_str.clone(),
+        url.to_string(),
+    ]);
 
     execute_ytdlp_cut(
         app,

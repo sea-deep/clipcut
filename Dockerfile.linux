@@ -1,0 +1,15 @@
+FROM rust:1-bookworm
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update -qq && apt-get install -y --no-install-recommends \
+  curl ca-certificates libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf squashfs-tools file clang lld p7zip-full
+
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+  apt-get install -y --no-install-recommends nodejs
+
+# Pre-extract linuxdeploy-plugin-appimage and create Tauri cache wrapper
+RUN mkdir -p /root/.cache/tauri /opt/appimage-plugin && \
+  curl -sL -o /tmp/plugin.AppImage https://github.com/linuxdeploy/linuxdeploy-plugin-appimage/releases/download/continuous/linuxdeploy-plugin-appimage-x86_64.AppImage && \
+  7z x -o/opt/appimage-plugin /tmp/plugin.AppImage && \
+  rm /tmp/plugin.AppImage && \
+  printf '#!/usr/bin/env bash\nexport PATH="/opt/appimage-plugin/appimagetool-prefix/usr/bin:$PATH"\nexec /opt/appimage-plugin/usr/bin/linuxdeploy-plugin-appimage "$@"\n' > /root/.cache/tauri/linuxdeploy-plugin-appimage.AppImage && \
+  chmod +x /root/.cache/tauri/linuxdeploy-plugin-appimage.AppImage /opt/appimage-plugin/usr/bin/linuxdeploy-plugin-appimage /opt/appimage-plugin/appimagetool-prefix/usr/bin/*

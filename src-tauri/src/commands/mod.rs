@@ -35,17 +35,27 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
     let ytdlp_cache = paths::cache_directory().join("ytdlp");
     let cache_dir_str = ytdlp_cache.to_string_lossy().to_string();
 
+    let mut args = vec![
+        "--cache-dir".to_string(),
+        cache_dir_str,
+        "-4".to_string(),
+        "--no-warnings".to_string(),
+        "--dump-json".to_string(),
+        "--no-download".to_string(),
+        "--no-playlist".to_string(),
+    ];
+    if let Some(ffmpeg_loc) = binaries::ffmpeg_location(&app) {
+        args.push("--ffmpeg-location".to_string());
+        args.push(ffmpeg_loc.to_string_lossy().to_string());
+    }
+    if let Some(js_runtime) = binaries::js_runtime_arg() {
+        args.push("--js-runtimes".to_string());
+        args.push(js_runtime);
+    }
+    args.push(url.clone());
+
     let output = binaries::sidecar_command(&app, "yt-dlp")?
-        .args([
-            "--cache-dir",
-            &cache_dir_str,
-            "--dump-json",
-            "--no-download",
-            "--no-playlist",
-            "--js-runtimes",
-            "node",
-            &url,
-        ])
+        .args(&args)
         .output()
         .await
         .map_err(|e| AppError::ToolFailure {

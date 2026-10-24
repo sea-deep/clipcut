@@ -96,8 +96,11 @@ download_ffmpeg() {
       local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
       local tmpdir
       tmpdir="$(mktemp -d)"
-      curl -fsSL --retry 3 "$url" \
-        | tar -xJ --strip-components=2 -C "$tmpdir" --wildcards '*/bin/ffmpeg' '*/bin/ffprobe'
+      local tarfile="$tmpdir/ffmpeg.tar.xz"
+      curl -fsSL --retry 3 "$url" -o "$tarfile"
+      tar -xf "$tarfile" -C "$tmpdir"
+      find "$tmpdir" -type f -name "ffmpeg" -exec mv {} "$tmpdir/ffmpeg" \;
+      find "$tmpdir" -type f -name "ffprobe" -exec mv {} "$tmpdir/ffprobe" \;
       mv "$tmpdir/ffmpeg" "$dest_ffmpeg"
       mv "$tmpdir/ffprobe" "$dest_ffprobe"
       chmod +x "$dest_ffmpeg" "$dest_ffprobe"
@@ -107,8 +110,11 @@ download_ffmpeg() {
       local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linuxarm64-gpl.tar.xz"
       local tmpdir
       tmpdir="$(mktemp -d)"
-      curl -fsSL --retry 3 "$url" \
-        | tar -xJ --strip-components=2 -C "$tmpdir" --wildcards '*/bin/ffmpeg' '*/bin/ffprobe'
+      local tarfile="$tmpdir/ffmpeg.tar.xz"
+      curl -fsSL --retry 3 "$url" -o "$tarfile"
+      tar -xf "$tarfile" -C "$tmpdir"
+      find "$tmpdir" -type f -name "ffmpeg" -exec mv {} "$tmpdir/ffmpeg" \;
+      find "$tmpdir" -type f -name "ffprobe" -exec mv {} "$tmpdir/ffprobe" \;
       mv "$tmpdir/ffmpeg" "$dest_ffmpeg"
       mv "$tmpdir/ffprobe" "$dest_ffprobe"
       chmod +x "$dest_ffmpeg" "$dest_ffprobe"
@@ -133,8 +139,6 @@ download_ffmpeg() {
       fi
       mv "$tmpdir/ffmpeg.exe" "$dest_ffmpeg"
       mv "$tmpdir/ffprobe.exe" "$dest_ffprobe"
-      rm -rf "$tmpdir"
-      ;;
       rm -rf "$tmpdir"
       ;;
     aarch64-apple-darwin)
