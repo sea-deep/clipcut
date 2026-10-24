@@ -2,7 +2,7 @@ use thiserror::Error;
 
 /// Application-level error categories.
 /// Each variant maps to a user-facing message; internal details go to logs.
-#[derive(Debug, Error)]
+#[derive(Debug, Error, PartialEq)]
 pub enum AppError {
     #[error("Please enter a valid YouTube URL.")]
     InvalidUrl,

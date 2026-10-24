@@ -4,6 +4,7 @@ import { open as openDialog } from "@tauri-apps/plugin-dialog";
 
 import {
   type AppState,
+  type AuthState,
   type ClipEntry,
   type ExportOptions,
   type ExportResult,
@@ -48,6 +49,18 @@ const sidecarErrorMsg = $("sidecar-error-msg");
 const queueSection = $("queue-section");
 const queueList = $("queue-list");
 const clearQueueBtn = $<HTMLButtonElement>("clear-queue-btn");
+const authBtn = $<HTMLButtonElement>("auth-btn");
+const authPillText = $("auth-pill-text");
+const authOverlay = $("auth-overlay");
+const authOptionsList = $("auth-options-list");
+const authBrowseFileBtn = $<HTMLButtonElement>("auth-browse-file-btn");
+const authFilePath = $("auth-file-path");
+const authCancelBtn = $<HTMLButtonElement>("auth-cancel-btn");
+const authSaveBtn = $<HTMLButtonElement>("auth-save-btn");
+
+let currentAuthState: AuthState | null = null;
+let selectedAuthSource = "auto";
+let selectedCustomPath: string | null = null;
 
 // ── App state ─────────────────────────────────────────────────────────────────
 
@@ -84,6 +97,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   setupEventListeners();
   setupProgressListener();
   setupSidecarListener();
+  await refreshAuthState();
 });
 
 // ── Theme ─────────────────────────────────────────────────────────────────────
@@ -289,10 +303,44 @@ function setupEventListeners() {
     renderQueue();
   });
 
-  // Escape cancels active job if running
+  authBtn.addEventListener("click", openAuthDialog);
+  authCancelBtn.addEventListener("click", closeAuthDialog);
+  authOverlay.addEventListener("click", (e) => {
+    if (e.target === authOverlay) closeAuthDialog();
+  });
+  authBrowseFileBtn.addEventListener("click", async () => {
+    const selected = await openDialog({
+      multiple: false,
+      filters: [{ name: "Cookies File", extensions: ["txt"] }],
+    });
+    if (selected && typeof selected === "string") {
+      selectedCustomPath = selected;
+      selectedAuthSource = "custom";
+      authFilePath.textContent = selected.split("/").pop() || selected;
+      renderAuthOptions();
+    }
+  });
+  authSaveBtn.addEventListener("click", async () => {
+    await invoke("set_cookie_source", {
+      source: selectedAuthSource,
+      customPath: selectedCustomPath,
+    });
+    await refreshAuthState();
+    closeAuthDialog();
+    if (!urlError.classList.contains("hidden")) {
+      clearUrlError();
+      handleLoad();
+    }
+  });
+
+  // Escape cancels active job if running or closes modal
   document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && activeJobId) {
-      handleCancel();
+    if (e.key === "Escape") {
+      if (!authOverlay.classList.contains("hidden")) {
+        closeAuthDialog();
+      } else if (activeJobId) {
+        handleCancel();
+      }
     }
   });
 }
@@ -328,9 +376,18 @@ async function handleLoad() {
       setLoadingState(false);
       return;
     }
-    showUrlError(msg || "Could not load video.");
     setLoadingState(false);
     hideVideoInfo();
+    if (
+      err?.code === "AUTH_REQUIRED" ||
+      msg.toLowerCase().includes("authentication") ||
+      msg.toLowerCase().includes("sign in") ||
+      msg.toLowerCase().includes("bot")
+    ) {
+      showAuthRecovery(msg);
+    } else {
+      showUrlError(msg || "Could not load video.");
+    }
   }
 }
 
@@ -1022,6 +1079,162 @@ function setupSidecarListener() {
   });
 }
 
+// ── Auth & Cookies ────────────────────────────────────────────────────────────
+
+async function refreshAuthState() {
+  try {
+    currentAuthState = await invoke<AuthState>("get_auth_state");
+    const source = currentAuthState.current_source;
+    if (source === "auto") {
+      const activeBrowser = currentAuthState.browsers.find((b) => b.available);
+      authPillText.textContent = activeBrowser
+        ? `Cookies: ${activeBrowser.name.replace(" Browser", "").replace("Google ", "").replace("Apple ", "")}`
+        : "Cookies: Auto";
+    } else if (source === "none") {
+      authPillText.textContent = "Cookies: Off";
+    } else if (source === "custom") {
+      authPillText.textContent = "Cookies: File";
+    } else {
+      const match = currentAuthState.browsers.find((b) => b.id === source);
+      authPillText.textContent = `Cookies: ${match ? match.name.replace(" Browser", "").replace("Google ", "").replace("Apple ", "") : source}`;
+    }
+  } catch (e) {
+    console.error("Failed to fetch auth state", e);
+  }
+}
+
+function openAuthDialog() {
+  if (!currentAuthState) return;
+  selectedAuthSource = currentAuthState.current_source;
+  selectedCustomPath = currentAuthState.custom_path;
+  renderAuthOptions();
+  authFilePath.textContent = selectedCustomPath
+    ? selectedCustomPath.split("/").pop() || selectedCustomPath
+    : "No file selected";
+  authOverlay.classList.remove("hidden");
+}
+
+function closeAuthDialog() {
+  authOverlay.classList.add("hidden");
+}
+
+function renderAuthOptions() {
+  if (!currentAuthState) return;
+  authOptionsList.innerHTML = "";
+
+  // 1. Auto option
+  const autoRow = createAuthOptionRow("auto", "Auto-detect (Recommended)", true);
+  authOptionsList.appendChild(autoRow);
+
+  // 2. Browsers
+  for (const b of currentAuthState.browsers) {
+    const row = createAuthOptionRow(b.id, b.name, b.available);
+    authOptionsList.appendChild(row);
+  }
+
+  // 3. None option
+  const noneRow = createAuthOptionRow("none", "None (Unauthenticated)", true);
+  authOptionsList.appendChild(noneRow);
+}
+
+function createAuthOptionRow(id: string, name: string, available: boolean): HTMLElement {
+  const row = document.createElement("div");
+  row.className = `auth-option-row${selectedAuthSource === id ? " selected" : ""}`;
+
+  const info = document.createElement("div");
+  info.className = "auth-option-info";
+  info.innerHTML = `<span>${escHtml(name)}</span>`;
+  if (available && id !== "auto" && id !== "none") {
+    const badge = document.createElement("span");
+    badge.className = "auth-detected-badge";
+    badge.textContent = "Detected";
+    info.appendChild(badge);
+  }
+
+  row.appendChild(info);
+
+  row.addEventListener("click", () => {
+    selectedAuthSource = id;
+    renderAuthOptions();
+  });
+
+  return row;
+}
+
+async function showAuthRecovery(msg: string) {
+  urlInput.setAttribute("aria-invalid", "true");
+  urlError.classList.remove("hidden");
+  urlError.innerHTML = "";
+
+  const recoveryCard = document.createElement("div");
+  recoveryCard.className = "auth-recovery-card";
+
+  const titleRow = document.createElement("div");
+  titleRow.className = "auth-recovery-title";
+  titleRow.innerHTML = `<svg class="icon icon-sm"><use href="#icon-lock" /></svg><span>${escHtml(msg || "YouTube requires authentication for this video.")}</span>`;
+  recoveryCard.appendChild(titleRow);
+
+  const helpP = document.createElement("p");
+  helpP.className = "auth-recovery-help";
+  helpP.textContent =
+    "YouTube requires session verification or login for this video. Authenticate with an installed browser session or cookies.txt:";
+  recoveryCard.appendChild(helpP);
+
+  const actionsDiv = document.createElement("div");
+  actionsDiv.className = "auth-recovery-actions";
+
+  if (!currentAuthState) {
+    try {
+      currentAuthState = await invoke<AuthState>("get_auth_state");
+    } catch {
+      // ignore
+    }
+  }
+
+  const available = currentAuthState?.browsers.filter((b) => b.available) ?? [];
+  for (const b of available) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn btn--primary auth-recovery-btn";
+    btn.innerHTML = `<svg class="icon icon-sm"><use href="#icon-key" /></svg><span>Use ${escHtml(b.name)} Cookies</span>`;
+    btn.addEventListener("click", async () => {
+      await invoke("set_cookie_source", { source: b.id, customPath: null });
+      await refreshAuthState();
+      clearUrlError();
+      handleLoad();
+    });
+    actionsDiv.appendChild(btn);
+  }
+
+  const fileBtn = document.createElement("button");
+  fileBtn.type = "button";
+  fileBtn.className = "btn btn--secondary auth-recovery-btn";
+  fileBtn.textContent = "Import cookies.txt…";
+  fileBtn.addEventListener("click", async () => {
+    const selected = await openDialog({
+      multiple: false,
+      filters: [{ name: "Cookies File", extensions: ["txt"] }],
+    });
+    if (selected && typeof selected === "string") {
+      await invoke("set_cookie_source", { source: "custom", customPath: selected });
+      await refreshAuthState();
+      clearUrlError();
+      handleLoad();
+    }
+  });
+  actionsDiv.appendChild(fileBtn);
+
+  const settingsBtn = document.createElement("button");
+  settingsBtn.type = "button";
+  settingsBtn.className = "btn btn--secondary auth-recovery-btn";
+  settingsBtn.textContent = "Settings…";
+  settingsBtn.addEventListener("click", openAuthDialog);
+  actionsDiv.appendChild(settingsBtn);
+
+  recoveryCard.appendChild(actionsDiv);
+  urlError.appendChild(recoveryCard);
+}
+
 // ── Error Helpers ─────────────────────────────────────────────────────────────
 
 function showUrlError(msg: string) {
@@ -1031,6 +1244,7 @@ function showUrlError(msg: string) {
 }
 
 function clearUrlError() {
+  urlError.innerHTML = "";
   urlError.classList.add("hidden");
   urlInput.removeAttribute("aria-invalid");
 }

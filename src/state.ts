@@ -43,6 +43,19 @@ export type AppState =
   | { phase: "exporting"; video: VideoInfo }
   | { phase: "done"; video: VideoInfo; result: ExportResult };
 
+export interface BrowserOption {
+  id: string;
+  name: string;
+  available: boolean;
+  detail?: string | null;
+}
+
+export interface AuthState {
+  current_source: string;
+  custom_path: string | null;
+  browsers: BrowserOption[];
+}
+
 export interface ClipEntry {
   id: string;
   startRaw: string;

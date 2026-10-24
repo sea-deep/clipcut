@@ -28,6 +28,14 @@ pub fn video_cache_directory(video_id: &str) -> PathBuf {
     cache_directory().join(video_id)
 }
 
+/// OS-appropriate directory for ClipCut configuration.
+pub fn config_directory() -> PathBuf {
+    dirs::config_dir()
+        .or_else(dirs::data_dir)
+        .unwrap_or_else(cache_directory)
+        .join("clipcut")
+}
+
 /// OS log directory for ClipCut.
 pub fn log_directory() -> PathBuf {
     dirs::data_local_dir()

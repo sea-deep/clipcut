@@ -284,6 +284,42 @@ body {
   color: var(--color-danger);
 }
 
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.adw-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px 10px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-round);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  outline: none;
+  transition:
+    background var(--anim-quick),
+    color var(--anim-quick),
+    border-color var(--anim-quick);
+}
+
+.adw-pill-btn:hover {
+  background: var(--color-surface-hover);
+  color: var(--color-text);
+  border-color: var(--color-border);
+}
+
+.adw-pill-btn:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
 /* ── Main Workspace ───────────────────────────────────────────────────────── */
 .app-main {
   flex: 1;
@@ -1015,6 +1051,130 @@ body {
 
 .dialog-actions .btn {
   flex: 1;
+}
+
+/* ── Auth Recovery Card ──────────────────────────────────────────────────── */
+.auth-recovery-card {
+  margin-top: var(--space-2);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(224, 27, 36, 0.08);
+  border: 1px solid rgba(224, 27, 36, 0.25);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  text-align: left;
+}
+
+.auth-recovery-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--color-danger);
+}
+
+.auth-recovery-help {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.auth-recovery-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+
+.auth-recovery-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-xs);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+/* ── Auth Modal Dialog ───────────────────────────────────────────────────── */
+.auth-dialog {
+  width: 440px;
+  max-width: 92vw;
+  text-align: left;
+  align-items: stretch;
+}
+
+.auth-dialog-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.auth-options-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  max-height: 240px;
+  overflow-y: auto;
+  margin: var(--space-2) 0;
+  padding-right: var(--space-1);
+}
+
+.auth-option-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--anim-quick);
+}
+
+.auth-option-row:hover {
+  background: var(--color-surface-hover);
+  border-color: var(--color-border);
+}
+
+.auth-option-row.selected {
+  border-color: var(--color-primary);
+  background: rgba(53, 132, 228, 0.12);
+}
+
+.auth-option-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+}
+
+.auth-detected-badge {
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-round);
+  background: rgba(51, 209, 122, 0.15);
+  color: var(--color-success);
+}
+
+.auth-file-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-2);
+}
+
+.auth-file-label {
+  font-size: var(--text-xs);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
 }
 
 /* ── Keyframes & Animations ───────────────────────────────────────────────── */

@@ -198,6 +198,36 @@
         <line x1="18" y1="6" x2="6" y2="18" />
         <line x1="6" y1="6" x2="18" y2="18" />
       </symbol>
+
+      <!-- Key / Auth -->
+      <symbol
+        id="icon-key"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <circle cx="7.5" cy="15.5" r="5.5" />
+        <path d="m21 2-9.6 9.6" />
+        <path d="m15.5 7.5 2.5 2.5" />
+        <path d="m18 5 2 2" />
+      </symbol>
+
+      <!-- Lock -->
+      <symbol
+        id="icon-lock"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      >
+        <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+        <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+      </symbol>
     </svg>
   </head>
   <body>
@@ -218,9 +248,15 @@
             <span class="app-subtitle">Video Clip Extractor</span>
           </div>
         </div>
-        <button id="theme-toggle" class="btn-icon" aria-label="Toggle theme" title="Toggle theme">
-          <svg class="icon icon-theme"><use href="#icon-sun" /></svg>
-        </button>
+        <div class="header-actions">
+          <button id="auth-btn" class="adw-pill-btn" aria-label="YouTube Authentication" title="YouTube Authentication & Cookies">
+            <svg class="icon icon-sm"><use href="#icon-key" /></svg>
+            <span id="auth-pill-text">Cookies: Auto</span>
+          </button>
+          <button id="theme-toggle" class="btn-icon" aria-label="Toggle theme" title="Toggle theme">
+            <svg class="icon icon-theme"><use href="#icon-sun" /></svg>
+          </button>
+        </div>
       </header>
 
       <main class="app-main">
@@ -241,7 +277,7 @@
               <span>Load</span>
             </button>
           </div>
-          <p id="url-error" class="field-error hidden" role="alert"></p>
+          <div id="url-error" class="field-error hidden" role="alert"></div>
         </section>
 
         <!-- Video Info Card — hidden until loaded -->
@@ -405,6 +441,41 @@
             <span>Open Folder</span>
           </button>
           <button id="done-close-btn" class="btn btn--secondary">Done</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- YouTube Authentication & Cookies Dialog -->
+    <div
+      id="auth-overlay"
+      class="overlay hidden"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="auth-modal-title"
+    >
+      <div class="overlay-dialog auth-dialog">
+        <div class="dialog-header">
+          <div class="auth-dialog-brand">
+            <svg class="icon"><use href="#icon-key" /></svg>
+            <h3 id="auth-modal-title" class="dialog-title">YouTube Authentication</h3>
+          </div>
+          <p class="dialog-desc text-muted">
+            Use cookies from your browser or a cookies file to access age-restricted videos and bypass YouTube bot challenges.
+          </p>
+        </div>
+        <div class="auth-options-list" id="auth-options-list">
+          <!-- Dynamically populated options -->
+        </div>
+        <div class="auth-file-row">
+          <button id="auth-browse-file-btn" class="btn btn--secondary btn--sm">
+            <svg class="icon icon-sm"><use href="#icon-folder" /></svg>
+            <span>Select cookies.txt…</span>
+          </button>
+          <span id="auth-file-path" class="auth-file-label text-muted">No file selected</span>
+        </div>
+        <div class="dialog-actions">
+          <button id="auth-cancel-btn" class="btn btn--secondary">Cancel</button>
+          <button id="auth-save-btn" class="btn btn--primary">Save</button>
         </div>
       </div>
     </div>

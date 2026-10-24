@@ -2,6 +2,7 @@ pub mod binaries;
 pub mod cancel;
 pub mod clip;
 pub mod commands;
+pub mod cookies;
 pub mod download;
 pub mod error;
 pub mod export;
@@ -30,6 +31,8 @@ pub fn run() {
             commands::get_default_output_dir,
             commands::open_directory,
             commands::check_sidecars,
+            commands::get_auth_state,
+            commands::set_cookie_source,
         ])
         .setup(|app| {
             let handle = app.handle().clone();

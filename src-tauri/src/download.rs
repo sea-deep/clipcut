@@ -82,6 +82,16 @@ fn base_ytdlp_args(app: &AppHandle, cache_dir_str: &str) -> Vec<String> {
         args.push("--js-runtimes".to_string());
         args.push(js_runtime);
     }
+
+    // Use robust client fallback list for bot protection and age-restriction bypass
+    args.push("--extractor-args".to_string());
+    args.push("youtube:player_client=web,mweb,android,web_embedded".to_string());
+
+    // Inject active/auto-detected browser cookies
+    for cookie_arg in crate::cookies::active_cookie_args() {
+        args.push(cookie_arg);
+    }
+
     args
 }
 

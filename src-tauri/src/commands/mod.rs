@@ -37,12 +37,14 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
 
     let mut args = vec![
         "--cache-dir".to_string(),
-        cache_dir_str,
+        cache_dir_str.clone(),
         "-4".to_string(),
         "--no-warnings".to_string(),
         "--dump-json".to_string(),
         "--no-download".to_string(),
         "--no-playlist".to_string(),
+        "--extractor-args".to_string(),
+        "youtube:player_client=web,mweb,android,web_embedded".to_string(),
     ];
     if let Some(ffmpeg_loc) = binaries::ffmpeg_location(&app) {
         args.push("--ffmpeg-location".to_string());
@@ -52,9 +54,12 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
         args.push("--js-runtimes".to_string());
         args.push(js_runtime);
     }
+    for cookie_arg in crate::cookies::active_cookie_args() {
+        args.push(cookie_arg);
+    }
     args.push(url.clone());
 
-    let output = binaries::sidecar_command(&app, "yt-dlp")?
+    let mut output = binaries::sidecar_command(&app, "yt-dlp")?
         .args(&args)
         .output()
         .await
@@ -67,6 +72,62 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
         let g = LOAD_GENERATION.lock().unwrap();
         if *g != generation {
             return Err(AppError::Cancelled); // Silently drop stale response
+        }
+    }
+
+    // If metadata retrieval failed with AuthenticationRequired and no explicit cookie was passed,
+    // automatically attempt recovery across installed browsers.
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).to_string();
+        let err = AppError::from_ytdlp_stderr(&stderr);
+
+        if matches!(err, AppError::AuthenticationRequired)
+            && crate::cookies::active_cookie_args().is_empty()
+        {
+            tracing::info!(
+                "Authentication required; scanning available browsers for session cookies..."
+            );
+            let browsers = crate::cookies::get_available_browsers();
+            for b in browsers.iter().filter(|b| b.available) {
+                let cookie_args = crate::cookies::resolve_cookie_args_for(&b.id, None);
+                if cookie_args.is_empty() {
+                    continue;
+                }
+                let mut retry_args = vec![
+                    "--cache-dir".to_string(),
+                    cache_dir_str.clone(),
+                    "-4".to_string(),
+                    "--no-warnings".to_string(),
+                    "--dump-json".to_string(),
+                    "--no-download".to_string(),
+                    "--no-playlist".to_string(),
+                    "--extractor-args".to_string(),
+                    "youtube:player_client=web,mweb,android,web_embedded".to_string(),
+                ];
+                if let Some(ffmpeg_loc) = binaries::ffmpeg_location(&app) {
+                    retry_args.push("--ffmpeg-location".to_string());
+                    retry_args.push(ffmpeg_loc.to_string_lossy().to_string());
+                }
+                if let Some(js_runtime) = binaries::js_runtime_arg() {
+                    retry_args.push("--js-runtimes".to_string());
+                    retry_args.push(js_runtime);
+                }
+                retry_args.extend(cookie_args);
+                retry_args.push(url.clone());
+
+                if let Ok(retry_output) = binaries::sidecar_command(&app, "yt-dlp")?
+                    .args(&retry_args)
+                    .output()
+                    .await
+                {
+                    if retry_output.status.success() {
+                        tracing::info!("Successfully authenticated via {} session cookies", b.name);
+                        crate::cookies::set_cookie_source(&b.id, None);
+                        output = retry_output;
+                        break;
+                    }
+                }
+            }
         }
     }
 
@@ -209,6 +270,24 @@ pub async fn check_sidecars(app: AppHandle) -> Result<serde_json::Value, AppErro
 
     let _ = app.emit("sidecar-status", &status);
     Ok(status)
+}
+
+/// Return the current authentication and cookie detection state.
+#[tauri::command]
+pub fn get_auth_state() -> crate::cookies::AuthState {
+    let (current_source, custom_path) = crate::cookies::get_cookie_source();
+    let browsers = crate::cookies::get_available_browsers();
+    crate::cookies::AuthState {
+        current_source,
+        custom_path,
+        browsers,
+    }
+}
+
+/// Set the active cookie source and optional custom cookie file path.
+#[tauri::command]
+pub fn set_cookie_source(source: String, custom_path: Option<String>) {
+    crate::cookies::set_cookie_source(&source, custom_path);
 }
 
 /// Validate that a URL is a recognisable YouTube URL.
