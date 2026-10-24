@@ -83,8 +83,21 @@ pub async fn load_video(app: AppHandle, url: String) -> Result<VideoInfo, AppErr
 
     let title = json["title"].as_str().unwrap_or("Untitled").to_string();
 
+    let is_live = json["is_live"].as_bool().unwrap_or(false)
+        || json["live_status"]
+            .as_str()
+            .map(|s| s == "is_live")
+            .unwrap_or(false);
+    if is_live {
+        return Err(AppError::ToolFailure {
+            detail: "Live streams cannot be clipped until broadcasting has ended and the archive is processed.".into(),
+        });
+    }
+
     let duration_seconds = json["duration"]
         .as_f64()
+        .or_else(|| json["duration"].as_i64().map(|d| d as f64))
+        .filter(|&d| d > 0.0)
         .ok_or(AppError::VideoUnavailable)?;
 
     let thumbnail_url = json["thumbnail"].as_str().unwrap_or("").to_string();
@@ -154,13 +167,19 @@ pub fn get_default_output_dir() -> String {
         .to_string()
 }
 
-/// Open a directory in the system file manager.
+/// Open a directory or URL in the default system handler.
 #[tauri::command]
 pub async fn open_directory(app: AppHandle, path: String) -> Result<(), AppError> {
     use tauri_plugin_opener::OpenerExt;
-    app.opener()
-        .open_path(path, None::<String>)
-        .map_err(|e| AppError::Unknown(e.to_string()))
+    if path.starts_with("http://") || path.starts_with("https://") {
+        app.opener()
+            .open_url(path, None::<String>)
+            .map_err(|e| AppError::Unknown(e.to_string()))
+    } else {
+        app.opener()
+            .open_path(path, None::<String>)
+            .map_err(|e| AppError::Unknown(e.to_string()))
+    }
 }
 
 /// Perform a health check on bundled sidecars. Non-blocking — called at startup.
@@ -189,4 +208,7 @@ fn is_youtube_url(url: &str) -> bool {
         || url.contains("youtu.be/")
         || url.contains("youtube.com/shorts/")
         || url.contains("youtube.com/live/")
+        || url.contains("youtube.com/embed/")
+        || url.contains("youtube.com/v/")
+        || url.contains("youtube-nocookie.com/embed/")
 }

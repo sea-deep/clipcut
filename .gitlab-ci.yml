@@ -1,23 +1,19 @@
 stages:
-  - build
+  - check
 
 variables:
   GIT_DEPTH: 1
 
-windows-x64:
-  stage: build
-  tags:
-    - saas-windows-medium-amd64
-  rules:
-    - if: $CI_COMMIT_TAG
-    - if: $CI_PIPELINE_SOURCE == "web"
-    - if: $CI_COMMIT_BRANCH == "main"
+check:
+  stage: check
+  image: rust:1-bookworm
+  before_script:
+    - apt-get update -qq && apt-get install -y --no-install-recommends curl ca-certificates libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf
+    - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+    - apt-get install -y nodejs
   script:
-    - powershell -ExecutionPolicy Bypass -File scripts\build-windows.ps1
-  artifacts:
-    name: "clipcut-windows-$CI_COMMIT_REF_SLUG"
-    when: on_success
-    expire_in: 30 days
-    paths:
-      - src-tauri/target/release/bundle/nsis/*.exe
-      - src-tauri/target/release/clipcut.exe
+    - npm ci
+    - npm run check:ts
+    - npm run test:ts
+    - bash scripts/download-sidecars.sh x86_64-unknown-linux-gnu
+    - cd src-tauri && cargo test

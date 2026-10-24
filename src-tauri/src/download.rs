@@ -204,9 +204,13 @@ async fn run_ytdlp_download(
             CommandEvent::Terminated(status) => {
                 crate::cancel::set_ytdlp_pid(None).await;
                 if crate::cancel::is_cancelled() {
+                    let _ = std::fs::remove_file(output_path);
+                    let _ = std::fs::remove_file(output_path.with_extension("mp4.part"));
                     return Err(AppError::Cancelled);
                 }
                 if !status.code.map(|c| c == 0).unwrap_or(false) {
+                    let _ = std::fs::remove_file(output_path);
+                    let _ = std::fs::remove_file(output_path.with_extension("mp4.part"));
                     return Err(AppError::from_ytdlp_stderr(&stderr_buf));
                 }
             }
@@ -217,6 +221,8 @@ async fn run_ytdlp_download(
     crate::cancel::set_ytdlp_pid(None).await;
 
     if crate::cancel::is_cancelled() {
+        let _ = std::fs::remove_file(output_path);
+        let _ = std::fs::remove_file(output_path.with_extension("mp4.part"));
         return Err(AppError::Cancelled);
     }
 

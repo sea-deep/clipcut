@@ -67,9 +67,9 @@ fn kill_pid(pid: u32) {
 
 #[cfg(windows)]
 fn kill_pid(pid: u32) {
-    // Use taskkill — avoids needing the windows-sys crate
+    // Use taskkill with /T to kill the entire process tree (including any sidecar children)
     let _ = std::process::Command::new("taskkill")
-        .args(["/PID", &pid.to_string(), "/F"])
+        .args(["/PID", &pid.to_string(), "/F", "/T"])
         .output();
 }
 

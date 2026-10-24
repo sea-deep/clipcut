@@ -16,7 +16,7 @@ import {
   toIpcClips,
   validateClip,
 } from "./state";
-import { formatTimestamp, parseRange, parseTimestamp } from "./timestamps";
+import { extractUrlTimestamp, formatTimestamp, parseRange, parseTimestamp } from "./timestamps";
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
 
@@ -143,9 +143,24 @@ function setupEventListeners() {
     if (
       val.includes("youtube.com/watch") ||
       val.includes("youtu.be/") ||
-      val.includes("youtube.com/shorts/")
+      val.includes("youtube.com/shorts/") ||
+      val.includes("youtube.com/live/") ||
+      val.includes("youtube.com/embed/") ||
+      val.includes("youtube.com/v/") ||
+      val.includes("youtube-nocookie.com/embed/")
     ) {
       handleLoad();
+    }
+  });
+
+  thumbnailLink.addEventListener("click", (e) => {
+    e.preventDefault();
+    if (
+      appState.phase === "video_loaded" ||
+      appState.phase === "exporting" ||
+      appState.phase === "done"
+    ) {
+      invoke("open_directory", { path: appState.video.url });
     }
   });
 
@@ -332,6 +347,15 @@ function onVideoLoaded(video: VideoInfo) {
 
   // Reset clips on new video load
   clips = [];
+  const initialTimestamp = extractUrlTimestamp(video.url);
+  if (initialTimestamp !== null && initialTimestamp < video.duration_seconds) {
+    addStartInput.value = formatTimestamp(initialTimestamp);
+    addEndInput.value = "";
+    addEndInput.focus();
+  } else {
+    addStartInput.value = "";
+    addEndInput.value = "";
+  }
   renderClips();
   updateExportButton();
 }
@@ -891,11 +915,18 @@ async function processQueue() {
       nextJob.percent = 100;
     }
   } catch (e: unknown) {
-    const err = e as { message?: string };
-    nextJob.status = "error";
-    nextJob.error = err?.message ?? "Export failed.";
-    nextJob.statusText = nextJob.error;
-    nextJob.percent = 0;
+    const err = e as { code?: string; message?: string };
+    const msg = err?.message ?? "";
+    if (err?.code === "CANCELLED" || msg.toLowerCase().includes("cancel")) {
+      nextJob.status = "cancelled";
+      nextJob.statusText = "Export cancelled";
+      nextJob.percent = 100;
+    } else {
+      nextJob.status = "error";
+      nextJob.error = msg || "Export failed.";
+      nextJob.statusText = nextJob.error;
+      nextJob.percent = 0;
+    }
   } finally {
     activeJobId = null;
     renderQueue();

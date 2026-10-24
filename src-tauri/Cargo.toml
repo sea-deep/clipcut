@@ -1,6 +1,6 @@
 [package]
 name = "clipcut"
-version = "0.1.0"
+version = "0.2.0"
 description = "Paste a YouTube URL, set timestamps, export clips."
 authors = ["sea-deep"]
 edition = "2021"

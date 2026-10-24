@@ -71,31 +71,68 @@ export interface ParsedRange {
 }
 
 /**
- * Parse a single range string like "0:15-0:42" or "1:02:15 - 1:04:20".
+ * Parse a single range string like "0:15-0:42", "1:02:15 - 1:04:20",
+ * "0:15 to 0:42", "0:15 – 0:42" (en-dash), "0:15 -> 0:42", "[0:15 - 0:42]".
+ * Also strips annotations like "0:15 - 0:42 (Intro)".
  * Returns null if either timestamp is invalid.
  */
 export function parseRange(input: string): ParsedRange | null {
-  // Split on "-" but not inside a timestamp (which also uses digits and colons)
-  // Strategy: find a "-" not at position 0 that is surrounded by non-colon chars
-  const match = input.match(/^([^-]+?)\s*-\s*(.+)$/);
-  if (!match) return null;
+  const trimmed = input.trim();
+  if (!trimmed) return null;
 
-  const start = parseTimestamp(match[1]);
-  const end = parseTimestamp(match[2]);
+  // Clean outer brackets/parentheses e.g. "[0:15 - 0:42]" or "(0:15 - 0:42)"
+  const clean = trimmed.replace(/^[\[(]\s*/, "").replace(/\s*[\])]$/, "");
+
+  // Match: part1 separated by range delimiter (->, -, –, —, →, .., to)
+  const delimiterRegex = /\s*(?:->|[-–—→]|\.{2,}|\bto\b)\s*/i;
+  const parts = clean.split(delimiterRegex);
+  if (parts.length < 2) return null;
+
+  // Extract the timestamp tokens nearest the delimiter, stripping any non-timestamp markers
+  const rawP1 = parts[0].trim().split(/\s+/).pop() ?? "";
+  const rawP2 = parts[1].trim().split(/\s+/)[0] ?? "";
+  const p1 = rawP1.replace(/^[^\d]+|[^\d]+$/g, "");
+  const p2 = rawP2.replace(/^[^\d]+|[^\d]+$/g, "");
+
+  const start = parseTimestamp(p1);
+  const end = parseTimestamp(p2);
 
   if (start === null || end === null) return null;
   return { start, end };
 }
 
 /**
+ * Extract timestamp from YouTube URL parameters if present (e.g. ?t=85s or &t=1m25s or ?start=85).
+ */
+export function extractUrlTimestamp(url: string): number | null {
+  try {
+    const parsed = new URL(url);
+    const tParam = parsed.searchParams.get("t") || parsed.searchParams.get("start");
+    if (!tParam) return null;
+
+    if (/^\d+$/.test(tParam)) {
+      return parseInt(tParam, 10);
+    }
+    const h = tParam.match(/(\d+)h/i)?.[1] ? parseInt(tParam.match(/(\d+)h/i)![1], 10) : 0;
+    const m = tParam.match(/(\d+)m/i)?.[1] ? parseInt(tParam.match(/(\d+)m/i)![1], 10) : 0;
+    const s = tParam.match(/(\d+)s/i)?.[1] ? parseInt(tParam.match(/(\d+)s/i)![1], 10) : 0;
+    if (h > 0 || m > 0 || s > 0) {
+      return h * 3600 + m * 60 + s;
+    }
+    return parseTimestamp(tParam);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Parse multiple ranges from a pasted block.
- * Supports newline-separated or comma-separated ranges.
+ * Supports newline-separated, semicolon-separated, or comma-separated ranges.
  * Silently skips unparseable lines.
  */
 export function parseMultipleRanges(input: string): ParsedRange[] {
-  // Split on newlines or commas
   const lines = input
-    .split(/[\n,]+/)
+    .split(/[\n,;]+/)
     .map((l) => l.trim())
     .filter((l) => l.length > 0);
 
@@ -140,7 +177,36 @@ if (import.meta.vitest) {
       const r = parseRange("2:10 - 2:35");
       expect(r).toEqual({ start: 130, end: 155 });
     });
+    it("parses en-dash and em-dash", () => {
+      expect(parseRange("0:15 – 0:42")).toEqual({ start: 15, end: 42 });
+      expect(parseRange("0:15 — 0:42")).toEqual({ start: 15, end: 42 });
+    });
+    it("parses 'to' and arrows", () => {
+      expect(parseRange("0:15 to 0:42")).toEqual({ start: 15, end: 42 });
+      expect(parseRange("0:15 -> 0:42")).toEqual({ start: 15, end: 42 });
+      expect(parseRange("0:15 → 0:42")).toEqual({ start: 15, end: 42 });
+      expect(parseRange("0:15..0:42")).toEqual({ start: 15, end: 42 });
+    });
+    it("parses brackets and annotations", () => {
+      expect(parseRange("[0:15 - 0:42]")).toEqual({ start: 15, end: 42 });
+      expect(parseRange("0:15 - 0:42 Intro")).toEqual({ start: 15, end: 42 });
+    });
     it("returns null for invalid", () => expect(parseRange("abc")).toBeNull());
+  });
+
+  describe("extractUrlTimestamp", () => {
+    it("extracts bare seconds ?t=85", () => {
+      expect(extractUrlTimestamp("https://youtu.be/abc?t=85")).toBe(85);
+    });
+    it("extracts formatted time &t=1m25s", () => {
+      expect(extractUrlTimestamp("https://www.youtube.com/watch?v=abc&t=1m25s")).toBe(85);
+    });
+    it("extracts start parameter ?start=120", () => {
+      expect(extractUrlTimestamp("https://www.youtube.com/embed/abc?start=120")).toBe(120);
+    });
+    it("returns null when no timestamp in url", () => {
+      expect(extractUrlTimestamp("https://youtu.be/abc")).toBeNull();
+    });
   });
 
   describe("parseMultipleRanges", () => {
@@ -150,6 +216,10 @@ if (import.meta.vitest) {
     });
     it("parses comma-separated", () => {
       const r = parseMultipleRanges("0:15-0:42, 2:10-2:35");
+      expect(r).toHaveLength(2);
+    });
+    it("parses semicolon-separated", () => {
+      const r = parseMultipleRanges("0:15 to 0:42; 2:10 – 2:35");
       expect(r).toHaveLength(2);
     });
     it("skips invalid lines", () => {

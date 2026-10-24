@@ -88,6 +88,16 @@ impl QualityOption {
             QualityOption::P360 => "bv*[height<=360][protocol^=http]+ba[protocol^=http]/b[height<=360][protocol^=http]/best",
         }
     }
+
+    pub fn scale_filter(&self) -> Option<&'static str> {
+        match self {
+            QualityOption::Highest => None,
+            QualityOption::P1080 => Some("scale=-2:'min(1080,ih)'"),
+            QualityOption::P720 => Some("scale=-2:'min(720,ih)'"),
+            QualityOption::P480 => Some("scale=-2:'min(480,ih)'"),
+            QualityOption::P360 => Some("scale=-2:'min(360,ih)'"),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -201,6 +211,16 @@ mod tests {
         assert!(QualityOption::P360
             .format_selector()
             .contains("height<=360"));
+
+        assert_eq!(QualityOption::Highest.scale_filter(), None);
+        assert_eq!(
+            QualityOption::P720.scale_filter(),
+            Some("scale=-2:'min(720,ih)'")
+        );
+        assert_eq!(
+            QualityOption::P1080.scale_filter(),
+            Some("scale=-2:'min(1080,ih)'")
+        );
 
         let json = r#"{"output_directory":"/tmp","mode":"accurate","format":"mp4"}"#;
         let opt: ExportOptions = serde_json::from_str(json).unwrap();

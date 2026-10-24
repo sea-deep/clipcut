@@ -28,13 +28,17 @@ fi
 
 echo "Target: $TARGET"
 
-BINDIR="$(cd "$(dirname "$0")/../src-tauri/binaries" && pwd)"
+BINDIR="$(cd "$(dirname "$0")/.." && pwd)/src-tauri/binaries"
 mkdir -p "$BINDIR"
 
 # ── yt-dlp ────────────────────────────────────────────────────────────────────
 download_ytdlp() {
   local target="$1"
-  local dest="$BINDIR/yt-dlp-${target}"
+  local ext=""
+  case "$target" in
+    *windows*) ext=".exe" ;;
+  esac
+  local dest="$BINDIR/yt-dlp-${target}${ext}"
 
   if [ -f "$dest" ] && [ -s "$dest" ]; then
     echo "yt-dlp already present: $dest"
@@ -49,7 +53,6 @@ download_ytdlp() {
       local url="https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp_linux_aarch64"
       ;;
     x86_64-pc-windows-msvc)
-      dest="${dest}.exe"
       local url="https://github.com/yt-dlp/yt-dlp/releases/download/${YT_DLP_VERSION}/yt-dlp.exe"
       ;;
     aarch64-apple-darwin|x86_64-apple-darwin)
@@ -70,8 +73,12 @@ download_ytdlp() {
 # ── ffmpeg + ffprobe ──────────────────────────────────────────────────────────
 download_ffmpeg() {
   local target="$1"
-  local dest_ffmpeg="$BINDIR/ffmpeg-${target}"
-  local dest_ffprobe="$BINDIR/ffprobe-${target}"
+  local ext=""
+  case "$target" in
+    *windows*) ext=".exe" ;;
+  esac
+  local dest_ffmpeg="$BINDIR/ffmpeg-${target}${ext}"
+  local dest_ffprobe="$BINDIR/ffprobe-${target}${ext}"
   local tmpdir=""
 
   if [ -f "$dest_ffmpeg" ] && [ -s "$dest_ffmpeg" ]; then
@@ -108,16 +115,26 @@ download_ffmpeg() {
       rm -rf "$tmpdir"
       ;;
     x86_64-pc-windows-msvc)
-      dest_ffmpeg="${dest_ffmpeg}.exe"
-      dest_ffprobe="${dest_ffprobe}.exe"
       local url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-win64-gpl.zip"
       local tmpdir
       tmpdir="$(mktemp -d)"
       local zipfile="$tmpdir/ffmpeg.zip"
       curl -fsSL --retry 3 "$url" -o "$zipfile"
-      unzip -j "$zipfile" '*/bin/ffmpeg.exe' '*/bin/ffprobe.exe' -d "$tmpdir"
+      if command -v unzip >/dev/null 2>&1; then
+        unzip -j "$zipfile" '*/bin/ffmpeg.exe' '*/bin/ffprobe.exe' -d "$tmpdir"
+      elif command -v powershell >/dev/null 2>&1; then
+        powershell -Command "Expand-Archive -Path '$zipfile' -DestinationPath '$tmpdir' -Force"
+        find "$tmpdir" -name "ffmpeg.exe" -exec mv {} "$tmpdir/ffmpeg.exe" \;
+        find "$tmpdir" -name "ffprobe.exe" -exec mv {} "$tmpdir/ffprobe.exe" \;
+      elif command -v python3 >/dev/null 2>&1; then
+        python3 -m zipfile -e "$zipfile" "$tmpdir"
+        find "$tmpdir" -name "ffmpeg.exe" -exec mv {} "$tmpdir/ffmpeg.exe" \;
+        find "$tmpdir" -name "ffprobe.exe" -exec mv {} "$tmpdir/ffprobe.exe" \;
+      fi
       mv "$tmpdir/ffmpeg.exe" "$dest_ffmpeg"
       mv "$tmpdir/ffprobe.exe" "$dest_ffprobe"
+      rm -rf "$tmpdir"
+      ;;
       rm -rf "$tmpdir"
       ;;
     aarch64-apple-darwin)

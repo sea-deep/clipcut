@@ -33,7 +33,12 @@ pub async fn run_export(
 
     // --- 2. Create output directory ---
     let title_safe = paths::sanitize_filename(&video.title);
-    let output_dir = PathBuf::from(&options.output_directory).join(&title_safe);
+    let base_dir = if options.output_directory.trim().is_empty() {
+        paths::default_output_directory()
+    } else {
+        PathBuf::from(&options.output_directory)
+    };
+    let output_dir = base_dir.join(&title_safe);
     paths::ensure_dir(&output_dir)?;
 
     // --- 3. Cache check ---
@@ -155,6 +160,7 @@ pub async fn run_export(
                     &part_path,
                     &final_path,
                     &options.format,
+                    &options.quality,
                     &options.mode,
                     i,
                     clips.len(),

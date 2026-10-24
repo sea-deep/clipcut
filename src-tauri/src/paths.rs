@@ -56,20 +56,25 @@ pub fn sanitize_filename(name: &str) -> String {
         .collect();
 
     // Trim leading/trailing whitespace and dots
-    let trimmed = replaced.trim().trim_end_matches('.').trim();
+    let mut trimmed = replaced.trim();
+    while trimmed.ends_with('.') || trimmed.ends_with(' ') {
+        trimmed = &trimmed[..trimmed.len() - 1];
+    }
+    trimmed = trimmed.trim();
 
     // Truncate to 200 characters (UTF-8 char boundary safe)
     let truncated: String = trimmed.chars().take(200).collect();
 
     // Reject/replace Windows reserved device names (case-insensitive)
     let lower = truncated.to_lowercase();
+    let stem = lower.split('.').next().unwrap_or(&lower);
     let reserved_names = [
         "con", "prn", "aux", "nul", "com1", "com2", "com3", "com4", "com5", "com6", "com7", "com8",
         "com9", "lpt1", "lpt2", "lpt3", "lpt4", "lpt5", "lpt6", "lpt7", "lpt8", "lpt9",
     ];
-    if reserved_names.contains(&lower.as_str()) {
+    if reserved_names.contains(&stem) {
         format!("_{}", truncated)
-    } else if truncated.is_empty() {
+    } else if truncated.is_empty() || truncated.chars().all(|c| c == '_') {
         "clip".to_string()
     } else {
         truncated
@@ -160,17 +165,21 @@ mod tests {
     #[test]
     fn sanitize_trailing_dot() {
         assert_eq!(sanitize_filename("file."), "file");
+        assert_eq!(sanitize_filename("file. . ."), "file");
     }
 
     #[test]
     fn sanitize_reserved_name() {
         assert_eq!(sanitize_filename("CON"), "_CON");
+        assert_eq!(sanitize_filename("con.mp4"), "_con.mp4");
         assert_eq!(sanitize_filename("nul"), "_nul");
     }
 
     #[test]
     fn sanitize_empty() {
         assert_eq!(sanitize_filename(""), "clip");
+        assert_eq!(sanitize_filename("???"), "clip");
+        assert_eq!(sanitize_filename("   ...   "), "clip");
     }
 
     #[test]

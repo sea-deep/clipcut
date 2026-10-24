@@ -4,7 +4,7 @@ use tauri::AppHandle;
 
 use crate::{
     binaries,
-    clip::{Clip, ExportMode, OutputFormat},
+    clip::{Clip, ExportMode, OutputFormat, QualityOption},
     error::AppError,
     progress::{self, ProgressEvent},
 };
@@ -21,6 +21,7 @@ pub async fn extract_clip(
     part_path: &Path,
     final_path: &Path,
     format: &OutputFormat,
+    quality: &QualityOption,
     _mode: &ExportMode,
     clip_index: usize,
     clips_total: usize,
@@ -76,11 +77,17 @@ pub async fn extract_clip(
         source_str,
         "-t".to_string(),
         duration_str,
+        "-avoid_negative_ts".to_string(),
+        "make_zero".to_string(),
         "-c:v".to_string(),
         vcodec.to_string(),
         "-c:a".to_string(),
         acodec.to_string(),
     ];
+    if let Some(scale) = quality.scale_filter() {
+        args.push("-vf".to_string());
+        args.push(scale.to_string());
+    }
     args.extend(extra);
     let muxer_format = match format {
         OutputFormat::Mp4 => "mp4",
