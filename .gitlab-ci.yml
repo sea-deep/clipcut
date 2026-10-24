@@ -1,14 +1,16 @@
 stages:
-  - check
+  - test
+  - build
 
 variables:
   GIT_DEPTH: 1
 
-check:
-  stage: check
+test:
+  stage: test
   image: rust:1-bookworm
   before_script:
-    - apt-get update -qq && apt-get install -y --no-install-recommends curl ca-certificates libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends curl ca-certificates libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf
     - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
     - apt-get install -y nodejs
   script:
@@ -17,3 +19,25 @@ check:
     - npm run test:ts
     - bash scripts/download-sidecars.sh x86_64-unknown-linux-gnu
     - cd src-tauri && cargo test
+
+build-linux:
+  stage: build
+  image: rust:1-bookworm
+  rules:
+    - if: $CI_COMMIT_TAG
+    - if: $CI_COMMIT_BRANCH == "main"
+  before_script:
+    - apt-get update -qq
+    - apt-get install -y --no-install-recommends curl ca-certificates libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev librsvg2-dev patchelf squashfs-tools
+    - curl -fsSL https://deb.nodesource.com/setup_22.x | bash -
+    - apt-get install -y nodejs
+  script:
+    - npm ci
+    - bash scripts/download-sidecars.sh x86_64-unknown-linux-gnu
+    - npm run tauri build -- --bundles deb,appimage
+  artifacts:
+    name: "clipcut-linux-$CI_COMMIT_REF_SLUG"
+    expire_in: 30 days
+    paths:
+      - src-tauri/target/release/bundle/appimage/*.AppImage
+      - src-tauri/target/release/bundle/deb/*.deb
