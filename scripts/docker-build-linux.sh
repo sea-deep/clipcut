@@ -4,8 +4,8 @@ set -e
 cd /app
 
 echo "=== Ensuring frontend dependencies ==="
-if [ ! -d "node_modules" ]; then
-  npm ci
+if [ ! -d "node_modules/@tauri-apps/cli-linux-x64-gnu" ]; then
+  npm install --no-save @tauri-apps/cli-linux-x64-gnu
 fi
 
 echo "=== Building Tauri Linux bundles (deb) ==="
